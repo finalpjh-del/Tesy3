@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>명예•추모관 — 경찰 양성</title>
+<style>
+  :root{ --bg1:#0ea5e9; --bg2:#6366f1; --ink:#111; --paper:#fff; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,system-ui,sans-serif;color:#fff;background:linear-gradient(90deg,var(--bg1),var(--bg2))}
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:14px}
+  .pill{background:#0b1020;color:#fff;border-radius:999px;padding:8px 12px;text-decoration:none}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  .controls input,.controls select{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.15);color:#fff;outline:none}
+  .controls input::placeholder{color:rgba(255,255,255,.85)}
+  h2.section{margin:18px 14px 8px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;padding: 8px 14px 20px}
+  .card{border-radius:16px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.22);transform:translateY(6px);
+        transition:transform .2s ease, box-shadow .2s ease, opacity .3s ease; opacity:.98}
+  .card:hover{transform:translateY(2px);box-shadow:0 18px 52px rgba(0,0,0,.28)}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:10px 12px}
+  .chip{padding:4px 8px;border-radius:999px;font-weight:800;background:#fff;color:#111}
+  .content{padding:12px;background:rgba(0,0,0,.08)}
+  .meta{font-size:13px;opacity:.92}
+  .name{font-size:18px;font-weight:900}
+  .gold{color:#fff2a8;font-weight:900}
+  .secwrap{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:14px;margin:10px 14px;padding:6px 0}
+  .saveCard{margin-top:8px;padding:8px 12px;border-radius:10px;border:0;cursor:pointer;font-weight:800;background:#0b1020;color:#fff}
+  .delCard{margin-top:8px;margin-left:6px;padding:8px 12px;border-radius:10px;border:0;cursor:pointer;font-weight:800;background:#ef4444;color:#fff}
+  .banner{margin:10px 14px;padding:14px;border-radius:16px;
+    background:linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,.08));
+    border:1px solid rgba(255,255,255,.35);box-shadow:0 10px 28px rgba(0,0,0,.18)}
+  .banner h2{margin:0 0 6px}
+  .banner p{margin:0;opacity:.95}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+<header>
+  <h1 style="margin:0">🕯️ 명예•추모관</h1>
+  <nav class="controls">
+    <a class="pill" href="index.html?v=0.12">메인으로</a>
+    <a class="pill" href="police_training_game.html">게임하기</a>
+  </nav>
+  <div class="controls">
+    <input id="search" type="text" placeholder="이름·조직·계급 검색">
+    <select id="sort">
+      <option value="new">🕓 최신순</option>
+      <option value="old">📜 오래된순</option>
+      <option value="rank">🎖️ 계급순</option>
+      <option value="name">🔤 이름순</option>
+      <option value="months">📅 근무기간순</option>
+    </select>
+  </div>
+</header>
+
+<div class="banner"><h2>우리는 기억합니다.</h2><p>당신의 헌신과 용기를 잊지 않습니다. 기록은 명예가 됩니다.</p></div>
+<div id="wrap"></div>
+
+<script>
+(()=>{
+  const SKEY="police_memorials";
+  const $=id=>document.getElementById(id);
+  const wrap=$("wrap");
+
+  const THEME = {
+    "명예퇴직": {color:"#fbbf24",icon:"🏅"},
+    "정년퇴직": {color:"#3b82f6",icon:"🎖️"},
+    "파면": {color:"#6b7280",icon:"🚫"},
+    "의원면직-자산가": {color:"#7c3aed",icon:"💰"},
+    "의원면직": {color:"#38bdf8",icon:"📝"},
+    "순직": {color:"#dc2626",icon:"🕯️"}
+  };
+
+  const GROUP_ORDER = ["명예퇴직","정년퇴직","파면","의원면직-자산가","의원면직","순직"];
+
+  const RANKS = ["의경","순경","경장","경사","경위","경감","경정","총경","경무관","치안감","치안정감","치안총감"];
+  const rankIndex = (r)=> RANKS.indexOf(r||"");
+
+  function draw(){
+    const q=($("search").value||"").trim();
+    const sort=($("sort").value||"new");
+    const data=JSON.parse(localStorage.getItem(SKEY)||"[]");
+
+    wrap.innerHTML="";
+    if(!data.length){ wrap.innerHTML=`<div class="secwrap" style="padding:18px;text-align:center">기록이 없습니다. 게임에서 엔딩을 본 뒤 자동 저장됩니다.</div>`; return; }
+
+    let items=data.slice();
+    if(q) items=items.filter(x=> (x.name||"").includes(q) || (x.org||"").includes(q) || (x.currentRank||"").includes(q) || (x.entryRank||"").includes(q) || (x.endTitle||"").includes(q));
+
+    const sortFn = (list)=>{
+      if(sort==="new") list.sort((a,b)=>(b.id||0)-(a.id||0));
+      else if(sort==="old") list.sort((a,b)=>(a.id||0)-(b.id||0));
+      else if(sort==="months") list.sort((a,b)=>(b.months||0)-(a.months||0));
+      else if(sort==="name") list.sort((a,b)=> (a.name||"").localeCompare(b.name||"","ko"));
+      else if(sort==="rank") list.sort((a,b)=> (rankIndex(b.currentRank)-rankIndex(a.currentRank)));
+    };
+
+    GROUP_ORDER.forEach(groupName=>{
+      const sect=items.filter(x=> (x.endTitle||"").includes(groupName));
+      if(!sect.length) return;
+      sortFn(sect);
+
+      const sec=document.createElement("section");
+      sec.className="secwrap";
+      sec.innerHTML=`<h2 class="section">${THEME[groupName].icon} ${groupName}</h2><div class="grid"></div>`;
+      wrap.appendChild(sec);
+      const grid=sec.querySelector(".grid");
+
+      sect.forEach(it=>{
+        const y=Math.floor((it.months||0)/12), m=(it.months||0)%12;
+        const startStr=new Date(it.startDate||Date.now()).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+        const kills=Object.keys(it.defeated||{}).map(k=>`${k}: ${it.defeated[k]}명`).join(", ") || "없음";
+        const hist=(it.changeLog||[]).join(" / ") || "없음";
+        const goldLine = (it.finalGold!=null) ? `<div class="meta">마지막 보유 골드 : ${it.finalGold}</div>` : "";
+        const ls = it.longService ? `<div class="meta">🏆 ${it.longService}</div>` : "";
+        const color = (THEME[groupName]||{color:"#111"}).color;
+
+        const card=document.createElement("article");
+        card.className="card";
+        card.style.background=color;
+        card.innerHTML=`
+          <div class="top">
+            <span class="chip">${(THEME[groupName]||{}).icon||""} ${it.endTitle||"엔딩"}</span>
+          </div>
+          <div class="content">
+            <div class="name">${it.name}</div>
+            <div class="meta">${it.org} ${it.entryRank} → 현재 <span class="gold">${it.currentRank}</span></div>
+            <div class="meta">입사 : ${startStr}</div>
+            <div class="meta">근무기간 : ${String(y).padStart(2,'0')}년 ${String(m).padStart(2,'0')}개월</div>
+            ${goldLine}
+            ${ls}
+            <div class="meta">제압 목록: ${kills}</div>
+            <div class="meta">승진/강등: ${hist}</div>
+            <div style="margin-top:8px">
+              <button class="saveCard">📸 카드 JPG 저장</button>
+              <button class="delCard">🗑️ 삭제</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    });
+  }
+
+  ["search","sort"].forEach(id=>$(id).addEventListener("input",draw));
+  draw();
+
+  document.addEventListener('click', (e)=>{
+    if(e.target && e.target.classList.contains('saveCard')){
+      const card = e.target.closest('.card');
+      if(!card) return;
+      html2canvas(card, {backgroundColor: null, scale: 2, ignoreElements: el => el && (el.classList?.contains('saveCard') || el.classList?.contains('delCard')) }).then(canvas=>{
+        const link = document.createElement('a');
+        link.download = `memorial_${Date.now()}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }).catch(err=>console.warn('saveCard failed', err));
+    }
+    if(e.target && e.target.classList.contains('delCard')){
+      const card = e.target.closest('.card');
+      if(!card) return;
+      const name = card.querySelector('.name')?.textContent?.trim()||"";
+      const title = card.querySelector('.chip')?.textContent?.trim()||"";
+      const data = JSON.parse(localStorage.getItem(SKEY)||"[]");
+      const idx = data.findIndex(x => (x.name===name) && (title.includes(x.endTitle)) );
+      if(idx>-1){ data.splice(idx,1); localStorage.setItem(SKEY, JSON.stringify(data)); }
+      card.remove();
+    }
+  });
+})();
+</script>
+</body>
+</html>
