@@ -24,7 +24,7 @@
   <div class="wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
       <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
-      <a class="btn" href="index.html?v=0.15">⬅️ 메인</a>
+      <a class="btn" href="index.html?v=0.16">⬅️ 메인</a>
     </div>
 
     <div id="motto" class="small" style="margin:8px 0 12px;font-weight:700">
@@ -54,7 +54,6 @@
   </div>
 
 <script>
-/* v0.14과 동일한 렌더러 (링크만 v0.15로 갱신) */
 (function(){
   const $=s=>document.querySelector(s);
   const list=$("#list");
@@ -66,14 +65,30 @@
   const fmt=(d)=> new Date(d).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
   const fmtYM=(months)=>{ const y=Math.floor((months||0)/12), m=(months||0)%12; return m===0? `${String(y).padStart(2,'0')}년` : `${String(y).padStart(2,'0')}년 ${String(m).padStart(2,'0')}개월`; };
 
+  function colorByEnding(endTitle){
+    switch(endTitle){
+      case "명예퇴직": return "#2e7d32";
+      case "계급정년퇴직": return "#1565c0";
+      case "정년퇴직": return "#0d47a1";
+      case "순직": return "#b71c1c";
+      case "파면": return "#4e342e";
+      case "의원면직": return "#6a1b9a";
+      case "의원면직-자산가": return "#f9a825";
+      default: return "#263238";
+    }
+  }
+
   function drawCardToCanvas(it){
     const W=840, H=480, pad=28;
     const c=document.createElement('canvas'); c.width=W; c.height=H;
     const g=c.getContext('2d');
+
+    const color = colorByEnding(it.endTitle||"");
     const grad=g.createLinearGradient(0,0,W,H);
-    grad.addColorStop(0,'#ff9966'); grad.addColorStop(1,'#ff5e62');
+    grad.addColorStop(0,color); grad.addColorStop(1,"#000");
     g.fillStyle=grad; g.fillRect(0,0,W,H);
-    g.fillStyle='rgba(255,255,255,0.9)'; g.fillRect(pad,pad,W-2*pad,H-2*pad);
+
+    g.fillStyle='rgba(255,255,255,0.92)'; g.fillRect(pad,pad,W-2*pad,H-2*pad);
     g.fillStyle='#111';
     g.font='bold 28px system-ui, -apple-system, Segoe UI, Roboto, Arial';
     g.fillText('명예·추모 카드', pad+14, pad+40);
@@ -139,9 +154,10 @@
         entryRank: it.entryRank, currentRank: it.currentRank, months: it.months,
         finalGold: it.finalGold||0, changeLog: it.changeLog||[]
       };
+      const border = colorByEnding(endTitle);
       return `
-        <div class="card">
-          <div class="title">${endTitle}<span class="tag">${it.currentRank||''}</span></div>
+        <div class="card" style="border-color:${border}; box-shadow:0 0 0 2px ${border}20 inset;">
+          <div class="title">${endTitle}<span class="tag" style="background:${border}">${it.currentRank||''}</span></div>
           <div>${startLine}</div>
           <div>${current}</div>
           <div>${period}</div>
