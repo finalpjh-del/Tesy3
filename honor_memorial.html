@@ -24,14 +24,13 @@
   <div class="wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
       <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
-      <a class="btn" href="index.html?v=0.14">⬅️ 메인</a>
+      <a class="btn" href="index.html?v=0.15">⬅️ 메인</a>
     </div>
 
     <div id="motto" class="small" style="margin:8px 0 12px;font-weight:700">
       명예와 헌신으로 지켜낸 발자취를 기억합니다.
     </div>
 
-    <!-- 필터/정렬/검색 -->
     <div class="toolbar">
       <select id="fEnding">
         <option value="">전체 엔딩</option>
@@ -55,6 +54,7 @@
   </div>
 
 <script>
+/* v0.14과 동일한 렌더러 (링크만 v0.15로 갱신) */
 (function(){
   const $=s=>document.querySelector(s);
   const list=$("#list");
@@ -112,20 +112,15 @@
     }catch(e){}
   }
 
-  function getData(){
-    try{ return JSON.parse(localStorage.getItem("police_memorials")||"[]"); }catch(e){ return []; }
-  }
+  function getData(){ try{ return JSON.parse(localStorage.getItem("police_memorials")||"[]"); }catch(e){ return []; } }
   function matchesQuery(it, needle){
     const t=[it.name,it.endTitle,it.currentRank,it.org].join(' ').toLowerCase();
     return t.includes(needle.toLowerCase());
   }
   function render(){
     let arr=getData();
-    // 필터
     if(fEnding.value) arr=arr.filter(x=>x.endTitle===fEnding.value);
-    // 검색
     if(q.value.trim()) arr=arr.filter(x=>matchesQuery(x,q.value.trim()));
-    // 정렬
     if(sortBy.value==="new"){ arr.sort((a,b)=>b.id-a.id); }
     else if(sortBy.value==="rank"){ arr.sort((a,b)=>rankOrder(b.currentRank)-rankOrder(a.currentRank)); }
     else if(sortBy.value==="name"){ arr.sort((a,b)=> (a.name||'').localeCompare(b.name||'')); }
