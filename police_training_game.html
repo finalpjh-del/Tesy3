@@ -45,6 +45,9 @@
   .sec .line{height:1px;background:linear-gradient(90deg,rgba(255,255,255,.7),rgba(255,255,255,.1));flex:1}
   .cta{text-align:center;margin-top:10px}
   .small{font-size:13px;opacity:.9}
+  /* 토스트 */
+  #toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:1300;display:none}
+  #toast .bubble{background:rgba(255,255,255,.95);color:#111;padding:10px 14px;border-radius:999px;box-shadow:0 6px 22px rgba(0,0,0,.35);font-weight:800}
 </style>
 </head>
 <body>
@@ -90,7 +93,7 @@
 
   <!-- 상단 바 -->
   <div class="bar">
-    <a class="pill" href="index.html?v=0.13">⬅️ 메인</a>
+    <a class="pill" href="index.html?v=0.14">⬅️ 메인</a>
     <span id="orgBadge" class="pill">🚓 경찰</span>
     <button id="btnResign" class="pill">📝 의원면직</button>
   </div>
@@ -171,11 +174,14 @@
       <div class="sec"><span class="chip">제압 목록</span><span class="line"></span></div>
       <ul id="kill"></ul>
       <div class="cta">
-        <a id="gotoGallery" href="honor_memorial.html?v=0.13" class="pill" style="text-decoration:none">명예•추모관 열기</a>
+        <a id="gotoGallery" href="honor_memorial.html?v=0.14" class="pill" style="text-decoration:none">명예•추모관 열기</a>
         <button id="backToStart" class="pill">신원 선택으로</button>
       </div>
     </div>
   </div>
+
+  <!-- 토스트 -->
+  <div id="toast"><div class="bubble" id="toastMsg">알림</div></div>
 
 <script>
 (()=>{
@@ -201,7 +207,8 @@ const el = {
   promo:$("promo"), promoTitle:$("promoTitle"), promoDesc:$("promoDesc"),
   promoD1:$("promoD1"), promoD2:$("promoD2"), promoGo:$("promoGo"), promoCancel:$("promoCancel"),
   ending:$("ending"), endTitle:$("endTitle"), endList:$("endList"), hist:$("hist"), kill:$("kill"),
-  btnResign:$("btnResign"), backToStart:$("backToStart")
+  btnResign:$("btnResign"), backToStart:$("backToStart"),
+  toast:$("toast"), toastMsg:$("toastMsg")
 };
 
 const state = {
@@ -213,7 +220,8 @@ const state = {
   defeated:{}, changeLog:[],
   monthsAccum:0, // 전투 화면엔 표시하지 않음(내부 계산용)
   ammo:'22lr', demotionCount:0,
-  lastRankChangeMonths:0, lastPromoAnnivNotifiedAt:-1
+  lastRankChangeMonths:0, lastPromoAnnivNotifiedAt:-1,
+  doubleStreak:0, // 연속 더블 보너스
 };
 
 const rint=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
@@ -223,6 +231,12 @@ const enemyTier=lv=> lv<=10?1:lv<=25?2:lv<=45?3:lv<=70?4:5;
 const monthsInRank=()=> state.monthsAccum - state.lastRankChangeMonths;
 const fmtYM=(months)=>{ const y=Math.floor((months||0)/12), m=(months||0)%12; return m===0 ? `${String(y).padStart(2,'0')}년` : `${String(y).padStart(2,'0')}년 ${String(m).padStart(2,'0')}개월`; };
 const nthYearLabel=(m)=> `${Math.floor((m||0)/12)}년차`;
+
+const showToast=(msg,ms=1800)=>{
+  el.toastMsg.textContent=msg;
+  el.toast.style.display='block';
+  setTimeout(()=>{ el.toast.style.display='none'; }, ms);
+};
 
 const updateFireLabel = () => {
   el.btnFire.textContent = (state.ammo === '9mm') ? "🔫 격발 (-4💰)" : "🔫 격발 (-3💰)";
@@ -338,12 +352,27 @@ function rollAnim(p,e){
     el.pDice.textContent=DICE[p-1]; el.eDice.textContent=DICE[e-1];
   },300);
 }
+function applyDoubleStreak(p,e){
+  if(p===e){
+    state.doubleStreak += 1;
+    if(state.doubleStreak>=2){
+      const bonus = 10*(state.doubleStreak-1);
+      state.gold += bonus; updateHUD();
+      showToast(`🎉 연속 더블 ${state.doubleStreak}회! 보너스 +${bonus}골드`);
+    }else{
+      showToast(`더블! (연속 ${state.doubleStreak}회)`,1200);
+    }
+  }else{
+    state.doubleStreak = 0;
+  }
+}
 el.btnRoll.onclick=()=>{
   if(state.ended) return;
   el.btnRoll.disabled=true; el.btnFire.disabled=true; el.btnUseBag.disabled=true;
   const p=rint(1,6), e=rint(1,6);
   rollAnim(p,e);
   setTimeout(()=>{
+    applyDoubleStreak(p,e);
     state.enemyHP-=p; state.hp-=e; updateHUD();
     if(state.enemyHP<=0){
       if(state.hp<=0){ onDeath(); return; }
@@ -414,6 +443,7 @@ function handleVictory(){
     logRankChange("강등", prevIdx, state.rankIdx);
     updateHUD(); openPopup("⬇️ 강등",[ `계급: ${RANKS[prevIdx]} → ${RANKS[state.rankIdx]}`, `최대체력 -10` ]);
     text="적 사망, 강등!";
+    if(state.demotionCount>=3){ openEnding("파면"); return; } // ★ 강등 3회 누적 파면
   }else if(state.enemyHP<=-10){
     text="과잉진압 보상없음";
   }else{
@@ -421,7 +451,7 @@ function handleVictory(){
   }
   el.msg.textContent=text;
   showAfterPanelThenAccrue(); // 이 시점에만 +4개월
-  state.level += 1; if(state.level>MAX_LEVEL) openEnding("정년퇴직");
+  state.level += 1; if(state.level>MAX_LEVEL) openEnding("계급정년퇴직"); // 만레벨 방지용(옵션)
 }
 
 // ---------- 승진 도전 ----------
@@ -437,7 +467,6 @@ function updatePromotionAvailability(){
   const allow=isAnniv&&(mir>=needMonths)&&(state.rankIdx < RANKS.length-1);
   el.btnPromote.disabled=!allow;
   el.btnPromote.style.opacity=allow?1:.6;
-  // Tooltip with requirement / next eligible
   const needY = Math.floor(needMonths/12);
   const nextIn = isAnniv ? (mir>=needMonths?0:12) : monthsUntilNextAnniv();
   const tipParts = [];
@@ -489,8 +518,10 @@ el.btnPromote.onclick=()=>{
       const prevIdx=state.rankIdx;
       doPromote("승진");
       openPopup("✅ 승진 성공", [`필요${req}점, 당신의 점수 ${sum}점 성공`, "혜택: 최대체력 +10"]);
+      showToast("🎖️ 승진 성공! 최대체력 +10");
     }else{
       openPopup("❌ 승진 실패", [`필요${req}점, 당신의 점수 ${sum}점 실패`, `다음 도전 가능: 약 ${monthsUntilNextAnniv()}개월 후 연차`]);
+      showToast("🎲 실패! 다음 연차에 재도전");
     }
     el.btnPromote.disabled=true; // 같은 연차 중복 방지
   });
@@ -524,10 +555,11 @@ function checkLongServicePromotion(){
     logRankChange("승진(근속)", prevIdx, state.rankIdx);
     state.lastRankChangeMonths=state.monthsAccum;
     updateHUD(); openPopup("🏆 근속승진", [`계급: ${RANKS[prevIdx]} → ${RANKS[state.rankIdx]}`, `최대체력 +10`]);
+    showToast("🏆 근속승진! 최대체력 +10");
   }
 }
 
-// 정년퇴직
+// 정년퇴직(계급 정체로 인한)
 function checkRetirement(){
   const idx=state.rankIdx; const m=monthsInRank();
   let limit=null;
@@ -536,8 +568,8 @@ function checkRetirement(){
   else if(idx===8) limit=72; // 경무관 6년
   else if(idx===9) limit=48; // 치안감 4년
   if(limit!=null && m>=limit){
-    openPopup("🎖️ 정년퇴직", `현 계급 ${RANKS[idx]}에서 ${fmtYM(m)} 동안 승진/강등이 없어 정년퇴직합니다.`);
-    openEnding("정년퇴직");
+    openPopup("🎖️ 계급정년퇴직", `현 계급 ${RANKS[idx]}에서 ${fmtYM(m)} 동안 승진/강등이 없어 퇴직합니다.`);
+    openEnding("계급정년퇴직");
   }
 }
 
@@ -595,14 +627,24 @@ function backToStart(){
     org:null, gender:null, name:"—", startRankIdx:1, rankIdx:1, entryRank:"순경",
     level:1, maxHP:50, hp:50, gold:0, bags:0, enemyHP:0, enemyLabel:"", cost:10,
     ended:false, startDate:new Date(), defeated:{}, changeLog:[], monthsAccum:0, ammo:'22lr',
-    demotionCount:0, lastRankChangeMonths:0, lastPromoAnnivNotifiedAt:-1
+    demotionCount:0, lastRankChangeMonths:0, lastPromoAnnivNotifiedAt:-1, doubleStreak:0
   });
   el.start.style.display="flex"; el.ending.style.display="none";
   updateHUD();
 }
 
 el.backToStart.onclick=()=>{ backToStart(); };
-el.btnResign.onclick=()=>{ if(!state.ended) openEnding("의원면직"); };
+
+// 의원면직 버튼 (자산가/30년 규칙 반영)
+el.btnResign.onclick=()=>{
+  if(state.ended) return;
+  if(state.monthsAccum>=360){ // 30년 이상 근무 상태에서 눌렀다면 정년퇴직
+    openEnding("정년퇴직");
+    return;
+  }
+  const wealthy = (state.gold >= Math.max(500, state.cost*3));
+  openEnding(wealthy ? "의원면직-자산가" : "의원면직");
+};
 
 // 애프터 패널 버튼들
 el.btnRest.onclick=()=>{ if(state.ended) return; state.hp=Math.min(state.maxHP,state.hp+5); updateHUD(); el.after.style.display='none'; spawnEnemy(); };
@@ -610,6 +652,7 @@ el.btnBuyBag.onclick=()=>{ if(state.ended) return; if(state.gold>=5){ state.gold
 el.btnUseBagAfter.onclick=()=>{ if(state.hp>=state.maxHP){ el.msg.textContent="❤️ 체력이 가득 찼습니다."; return; } if(state.bags>0){ state.bags-=1; state.hp=Math.min(state.maxHP,state.hp+30); updateHUD(); } else { el.msg.textContent="💉 구급함이 없습니다!"; } };
 el.btnAmmoAfter.onclick=()=>{ state.ammo = (state.ammo==='22lr') ? '9mm' : '22lr'; updateFireLabel(); openPopup("🔄 탄종 전환", `다음 턴부터 ${state.ammo}탄 사용`); };
 
+// 시작
 el.btnStart.onclick=()=>{ 
   if(!state.org) state.org = Math.random()<0.5?'police':'coast';
   if(!state.gender) state.gender = Math.random()<0.5?'M':'F';
