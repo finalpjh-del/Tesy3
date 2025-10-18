@@ -9,23 +9,46 @@
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff;font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif}
-  .wrap{max-width:1000px;margin:0 auto;padding:24px 14px}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px 14px}
   a.btn{display:inline-block;background:#0b1020;color:#fff;padding:10px 14px;border-radius:12px;text-decoration:none;font-weight:700}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:12px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .toolbar select,.toolbar input{padding:8px 10px;border-radius:10px;border:0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:12px}
   .card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:14px}
   .title{font-weight:800;margin-bottom:6px}
-  .small{font-size:12px;opacity:.85}
+  .small{font-size:12px;opacity:.9}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#0005;margin-left:6px;font-size:12px}
 </style>
 </head>
 <body>
   <div class="wrap">
-    <div style="display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
       <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
-      <a class="btn" href="index.html?v=0.13">⬅️ 메인</a>
+      <a class="btn" href="index.html?v=0.14">⬅️ 메인</a>
     </div>
 
     <div id="motto" class="small" style="margin:8px 0 12px;font-weight:700">
       명예와 헌신으로 지켜낸 발자취를 기억합니다.
+    </div>
+
+    <!-- 필터/정렬/검색 -->
+    <div class="toolbar">
+      <select id="fEnding">
+        <option value="">전체 엔딩</option>
+        <option>명예퇴직</option>
+        <option>계급정년퇴직</option>
+        <option>정년퇴직</option>
+        <option>순직</option>
+        <option>파면</option>
+        <option>의원면직</option>
+        <option>의원면직-자산가</option>
+      </select>
+      <select id="sortBy">
+        <option value="new">정렬: 최신순</option>
+        <option value="rank">정렬: 계급순</option>
+        <option value="name">정렬: 이름순</option>
+      </select>
+      <input id="q" placeholder="검색: 이름/엔딩/계급/조직" />
     </div>
 
     <div class="grid" id="list"></div>
@@ -35,6 +58,11 @@
 (function(){
   const $=s=>document.querySelector(s);
   const list=$("#list");
+  const fEnding=$("#fEnding");
+  const sortBy=$("#sortBy");
+  const q=$("#q");
+  const RANKS=["의경","순경","경장","경사","경위","경감","경정","총경","경무관","치안감","치안정감","치안총감"];
+  const rankOrder=name=>Math.max(0,RANKS.indexOf(name||""));
   const fmt=(d)=> new Date(d).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
   const fmtYM=(months)=>{ const y=Math.floor((months||0)/12), m=(months||0)%12; return m===0? `${String(y).padStart(2,'0')}년` : `${String(y).padStart(2,'0')}년 ${String(m).padStart(2,'0')}개월`; };
 
@@ -84,43 +112,61 @@
     }catch(e){}
   }
 
-  let arr=[];
-  try{ arr=JSON.parse(localStorage.getItem("police_memorials")||"[]"); }catch(e){ arr=[]; }
-  if(!arr.length){ list.innerHTML='<div class="small">기록이 없습니다.</div>'; return; }
-  arr.sort((a,b)=>b.id-a.id);
+  function getData(){
+    try{ return JSON.parse(localStorage.getItem("police_memorials")||"[]"); }catch(e){ return []; }
+  }
+  function matchesQuery(it, needle){
+    const t=[it.name,it.endTitle,it.currentRank,it.org].join(' ').toLowerCase();
+    return t.includes(needle.toLowerCase());
+  }
+  function render(){
+    let arr=getData();
+    // 필터
+    if(fEnding.value) arr=arr.filter(x=>x.endTitle===fEnding.value);
+    // 검색
+    if(q.value.trim()) arr=arr.filter(x=>matchesQuery(x,q.value.trim()));
+    // 정렬
+    if(sortBy.value==="new"){ arr.sort((a,b)=>b.id-a.id); }
+    else if(sortBy.value==="rank"){ arr.sort((a,b)=>rankOrder(b.currentRank)-rankOrder(a.currentRank)); }
+    else if(sortBy.value==="name"){ arr.sort((a,b)=> (a.name||'').localeCompare(b.name||'')); }
 
-  list.innerHTML=arr.map(it=>{
-    const endTitle = it.endTitle || '엔딩';
-    const promos = (it.changeLog||[]).map(s=>`• ${s}`).join("<br>") || "기록 없음";
-    const kills = Object.entries(it.defeated||{}).map(([k,v])=>`${k}: ${v}명`).join("<br>") || "기록 없음";
-    const startLine = `임용 : ${fmt(it.startDate)} ${it.org||''} ${it.entryRank||''}`;
-    const period = `근무기간 : ${fmtYM(it.months||0)}`;
-    const current = `현재 계급 : ${it.currentRank||''}`;
-    const payload = {
-      id: it.id, endTitle, name: it.name, startDate: it.startDate, org: it.org,
-      entryRank: it.entryRank, currentRank: it.currentRank, months: it.months,
-      finalGold: it.finalGold||0, changeLog: it.changeLog||[]
-    };
+    if(!arr.length){ list.innerHTML='<div class="small">조건에 맞는 기록이 없습니다.</div>'; return; }
 
-    return `
-      <div class="card">
-        <div class="title">${endTitle}</div>
-        <div>${startLine}</div>
-        <div>${current}</div>
-        <div>${period}</div>
-        <div>마지막 보유 골드 : ${it.finalGold||0}</div>
-        <hr style="border-color:rgba(255,255,255,.25);margin:10px 0">
-        <div class="small" style="font-weight:800;margin-bottom:4px">승진/강등 이력</div>
-        <div class="small">${promos}</div>
-        <div class="small" style="font-weight:800;margin:8px 0 4px">제압 목록</div>
-        <div class="small">${kills}</div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button onclick='(${downloadCard.toString()})(${JSON.stringify(payload)})' style="padding:6px 10px;border-radius:10px;border:0;cursor:pointer">이미지 저장</button>
-          <button onclick='(${deleteCard.toString()})(${it.id})' style="padding:6px 10px;border-radius:10px;border:0;cursor:pointer;background:#300;color:#fff">삭제</button>
+    list.innerHTML=arr.map(it=>{
+      const endTitle = it.endTitle || '엔딩';
+      const promos = (it.changeLog||[]).map(s=>`• ${s}`).join("<br>") || "기록 없음";
+      const kills = Object.entries(it.defeated||{}).map(([k,v])=>`${k}: ${v}명`).join("<br>") || "기록 없음";
+      const startLine = `임용 : ${fmt(it.startDate)} ${it.org||''} ${it.entryRank||''}`;
+      const period = `근무기간 : ${fmtYM(it.months||0)}`;
+      const current = `현재 계급 : ${it.currentRank||''}`;
+      const payload = {
+        id: it.id, endTitle, name: it.name, startDate: it.startDate, org: it.org,
+        entryRank: it.entryRank, currentRank: it.currentRank, months: it.months,
+        finalGold: it.finalGold||0, changeLog: it.changeLog||[]
+      };
+      return `
+        <div class="card">
+          <div class="title">${endTitle}<span class="tag">${it.currentRank||''}</span></div>
+          <div>${startLine}</div>
+          <div>${current}</div>
+          <div>${period}</div>
+          <div>마지막 보유 골드 : ${it.finalGold||0}</div>
+          <hr style="border-color:rgba(255,255,255,.25);margin:10px 0">
+          <div class="small" style="font-weight:800;margin-bottom:4px">승진/강등 이력</div>
+          <div class="small">${promos}</div>
+          <div class="small" style="font-weight:800;margin:8px 0 4px">제압 목록</div>
+          <div class="small">${kills}</div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button onclick='(${downloadCard.toString()})(${JSON.stringify(payload)})' style="padding:6px 10px;border-radius:10px;border:0;cursor:pointer">이미지 저장</button>
+            <button onclick='(${deleteCard.toString()})(${it.id})' style="padding:6px 10px;border-radius:10px;border:0;cursor:pointer;background:#300;color:#fff">삭제</button>
+          </div>
         </div>
-      </div>
-    `;
-  }).join("");
+      `;
+    }).join("");
+  }
+
+  [fEnding,sortBy,q].forEach(el=>el.addEventListener('input',render));
+  render();
 })();
 </script>
 </body>
