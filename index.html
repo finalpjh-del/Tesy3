@@ -5,60 +5,98 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>경찰 양성 게임</title>
 <style>
-  :root{--bg1:#ff9966;--bg2:#ff5e62;--ink:#10131a;--paper:#fff}
+  :root{
+    --bg1:#0b1020; --bg2:#111633;
+    --acc1:#ff9966; --acc2:#ff5e62;
+    --paper: #141a2e; --ink: #e8ecff;
+    --muted:#a8b3d9; --glass: rgba(255,255,255,.06);
+  }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
-    margin:0;
-    font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    background:linear-gradient(90deg,var(--bg1),var(--bg2));
-    color:#fff; text-align:center;
+    margin:0; font-family:Inter,system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 800px at 10% -10%, #2c315a 0%, transparent 60%),
+      radial-gradient(1200px 800px at 110% 0%, #2a2149 0%, transparent 60%),
+      linear-gradient(180deg, var(--bg1), var(--bg2));
+    display:flex; align-items:center; justify-content:center;
   }
-  .wrap{max-width:920px;margin:0 auto;padding:28px 16px}
-  h1{margin:8px 0 4px}
-  p{opacity:.9;margin:6px 0}
+  .wrap{width:min(1100px,94vw); padding:28px}
+  .hero{
+    display:grid; grid-template-columns:1.1fr .9fr; gap:20px; align-items:stretch;
+  }
+  @media (max-width:900px){ .hero{grid-template-columns:1fr;}}
+  .glass{
+    background:var(--glass); border:1px solid rgba(255,255,255,.12);
+    border-radius:18px; padding:22px; box-shadow:0 10px 40px rgba(0,0,0,.35);
+  }
+  h1{margin:0 0 6px; font-size:clamp(28px,5vw,40px); letter-spacing:.2px}
+  .lede{margin:0 0 10px; color:var(--muted)}
+  .cta{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px}
   a.btn, .btn{
-    display:inline-block; text-decoration:none; border:0; cursor:pointer;
-    padding:14px 18px; margin:8px 6px; border-radius:14px; font-weight:700; color:#fff;
-    background:linear-gradient(90deg,#ff9966,#ff5e62); box-shadow:0 6px 22px rgba(0,0,0,.25);
+    display:inline-flex; align-items:center; gap:10px;
+    padding:14px 18px; border-radius:14px; font-weight:800;
+    text-decoration:none; border:0; cursor:pointer; color:#fff;
+    background:linear-gradient(90deg,var(--acc1),var(--acc2));
+    box-shadow:0 10px 28px rgba(255,120,90,.25);
     transition:transform .15s ease, filter .2s ease;
   }
-  a.btn:hover, .btn:hover{transform:translateY(-1px); filter:brightness(1.05)}
-  .card{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); border-radius:16px; padding:16px; margin:10px 0; text-align:left}
-  #ver-under-tips{margin-top:6px;font-size:12px;opacity:.85}
+  a.btn:hover,.btn:hover{transform:translateY(-1px); filter:brightness(1.05)}
+  .tips-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .tips-body{display:none; margin-top:8px}
+  ul{margin:6px 0 0 18px}
+  /* 고정 푸터 버전 */
+  .footer{
+    position:fixed; left:0; right:0; bottom:10px; display:flex; justify-content:center; pointer-events:none;
+  }
+  .ver{
+    pointer-events:auto;
+    background:rgba(0,0,0,.4); color:#d8defa; font-weight:800;
+    padding:8px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.12);
+    backdrop-filter: blur(6px);
+  }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>🎲 경찰 양성 🎲</h1>
-    <p>전투로 사건을 제압하고, 연차에 맞춰 <b>승진 도전</b>을 해 보세요.</p>
+    <div class="hero">
+      <div class="glass">
+        <h1>🎲 경찰 양성</h1>
+        <p class="lede">전투로 사건을 제압하고, 연차에 맞춰 <b>승진 도전</b>에 성공하세요.</p>
+        <div class="cta">
+          <a class="btn" href="police_training_game.html?v=0.15">게임 시작</a>
+          <a class="btn" href="honor_memorial.html?v=0.15">명예·추모관</a>
+        </div>
+      </div>
 
-    <div>
-      <!-- 게임 시작 링크는 버전 쿼리 고정 -->
-      <a class="btn" href="police_training_game.html?v=0.14">게임 시작</a>
-      <a class="btn" href="honor_memorial.html?v=0.14">명예·추모관</a>
-    </div>
-
-    <div class="card" id="tips-card">
-      <button id="tips-toggle" class="btn" type="button" style="background:#0b1020;box-shadow:none">📝 게임 팁 보기</button>
-      <div id="tips-body" style="display:none; margin-top:8px">
-        <ul style="margin:6px 0 0 18px">
-          <li>전투(제압) 중 구급함 사용 가능 — <b>턴 소요 + 적만 주사위 굴림</b>.</li>
-          <li><b>제압 완료 후</b> 애프터 패널이 열릴 때에만 <b>+4개월 누적</b>.</li>
-          <li>승진 도전은 <b>연차(만 1·2·3년차…)</b>에만 가능. 경감/경정은 <b>2년차부터</b>.</li>
-          <li>근속승진: 의경→순경 3년, 순경→경장 4년, 경장→경사 5년, 경사→경위 6년6개월, 경위→경감 8년.</li>
-          <li>순직 시 <b>1계급 특진</b> 및 이력 기록.</li>
-        </ul>
-        <div id="ver-under-tips">v0.14</div>
+      <div class="glass">
+        <div class="tips-head">
+          <h3 style="margin:0">📝 게임 팁</h3>
+          <button id="tips-toggle" class="btn" type="button" style="padding:10px 12px;font-size:14px">열기/닫기</button>
+        </div>
+        <div id="tips-body" class="tips-body">
+          <ul>
+            <li>전투(제압) 중 구급함 사용 가능 — <b>턴 소요 + 적만 주사위 굴림</b>.</li>
+            <li><b>제압 완료 후</b> 애프터 패널이 열릴 때에만 <b>+4개월 누적</b>.</li>
+            <li>승진 도전은 <b>연차(만 1·2·3년차…)</b>에만 가능. 경감/경정은 <b>2년차부터</b>.</li>
+            <li>근속승진: 의경→순경 3년, 순경→경장 4년, 경장→경사 5년, 경사→경위 6년6개월, 경위→경감 8년.</li>
+            <li>순직 시 <b>1계급 특진</b> 및 이력 기록.</li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
+
+  <div class="footer"><div class="ver">v0.15</div></div>
 
 <script>
 (function(){
   const btn=document.getElementById('tips-toggle');
   const body=document.getElementById('tips-body');
-  if(btn&&body){ btn.addEventListener('click', ()=>{ body.style.display=(body.style.display==='none'||body.style.display==='')?'block':'none'; }); }
+  if(btn&&body){
+    btn.addEventListener('click', ()=>{ body.style.display=(body.style.display==='none'||body.style.display==='')?'block':'none'; });
+  }
 })();
 </script>
 </body>
