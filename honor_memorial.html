@@ -24,7 +24,7 @@
   <div class="wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
       <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
-      <a class="btn" href="index.html?v=0.16">⬅️ 메인</a>
+      <a class="btn" href="index.html?v=0.18">⬅️ 메인</a>
     </div>
 
     <div id="motto" class="small" style="margin:8px 0 12px;font-weight:700">
@@ -47,7 +47,7 @@
         <option value="rank">정렬: 계급순</option>
         <option value="name">정렬: 이름순</option>
       </select>
-      <input id="q" placeholder="검색: 이름/엔딩/계급/조직" />
+      <input id="q" placeholder="검색: 이름/엔딩/계급/조직/업적" />
     </div>
 
     <div class="grid" id="list"></div>
@@ -79,7 +79,7 @@
   }
 
   function drawCardToCanvas(it){
-    const W=840, H=480, pad=28;
+    const W=840, H=520, pad=28;
     const c=document.createElement('canvas'); c.width=W; c.height=H;
     const g=c.getContext('2d');
 
@@ -100,7 +100,8 @@
       `조직: ${it.org||''} / 시작 계급: ${it.entryRank||''}`,
       `현재 계급: ${it.currentRank||''}`,
       `근무기간: ${fmtYM(it.months||0)}`,
-      `마지막 보유 골드: ${it.finalGold||0}`
+      `마지막 보유 골드: ${it.finalGold||0}`,
+      `업적: ${(it.achievements||[]).join(' · ')||'없음'}`
     ];
     let y=pad+80;
     lines.forEach(t=>{ g.fillText(t, pad+14, y); y+=28; });
@@ -129,7 +130,7 @@
 
   function getData(){ try{ return JSON.parse(localStorage.getItem("police_memorials")||"[]"); }catch(e){ return []; } }
   function matchesQuery(it, needle){
-    const t=[it.name,it.endTitle,it.currentRank,it.org].join(' ').toLowerCase();
+    const t=[it.name,it.endTitle,it.currentRank,it.org,(it.achievements||[]).join(' ')].join(' ').toLowerCase();
     return t.includes(needle.toLowerCase());
   }
   function render(){
@@ -137,7 +138,7 @@
     if(fEnding.value) arr=arr.filter(x=>x.endTitle===fEnding.value);
     if(q.value.trim()) arr=arr.filter(x=>matchesQuery(x,q.value.trim()));
     if(sortBy.value==="new"){ arr.sort((a,b)=>b.id-a.id); }
-    else if(sortBy.value==="rank"){ arr.sort((a,b)=>rankOrder(b.currentRank)-rankOrder(a.currentRank)); }
+    else if(sortBy.value==="rank"){ arr.sort((a,b)=>RANKS.indexOf(b.currentRank)-RANKS.indexOf(a.currentRank)); }
     else if(sortBy.value==="name"){ arr.sort((a,b)=> (a.name||'').localeCompare(b.name||'')); }
 
     if(!arr.length){ list.innerHTML='<div class="small">조건에 맞는 기록이 없습니다.</div>'; return; }
@@ -149,10 +150,11 @@
       const startLine = `임용 : ${fmt(it.startDate)} ${it.org||''} ${it.entryRank||''}`;
       const period = `근무기간 : ${fmtYM(it.months||0)}`;
       const current = `현재 계급 : ${it.currentRank||''}`;
+      const achLine = `업적 : ${(it.achievements||[]).join(' · ')||'없음'}`;
       const payload = {
         id: it.id, endTitle, name: it.name, startDate: it.startDate, org: it.org,
         entryRank: it.entryRank, currentRank: it.currentRank, months: it.months,
-        finalGold: it.finalGold||0, changeLog: it.changeLog||[]
+        finalGold: it.finalGold||0, changeLog: it.changeLog||[], achievements: it.achievements||[]
       };
       const border = colorByEnding(endTitle);
       return `
@@ -162,6 +164,7 @@
           <div>${current}</div>
           <div>${period}</div>
           <div>마지막 보유 골드 : ${it.finalGold||0}</div>
+          <div class="small" style="margin-top:6px"><b>${achLine}</b></div>
           <hr style="border-color:rgba(255,255,255,.25);margin:10px 0">
           <div class="small" style="font-weight:800;margin-bottom:4px">승진/강등 이력</div>
           <div class="small">${promos}</div>
