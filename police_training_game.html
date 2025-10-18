@@ -93,12 +93,12 @@
 
   <!-- 상단 바 -->
   <div class="bar">
-    <a class="pill" href="index.html?v=0.14">⬅️ 메인</a>
+    <a class="pill" href="index.html?v=0.15">⬅️ 메인</a>
     <span id="orgBadge" class="pill">🚓 경찰</span>
     <button id="btnResign" class="pill">📝 의원면직</button>
   </div>
 
-  <!-- HUD (근무 개월수 표시 없음) -->
+  <!-- HUD -->
   <div class="hud">
     <span id="emoji">👮</span>
     <span id="rank">순경</span>
@@ -124,7 +124,7 @@
     <button id="btnUseBag" class="ok">💉 ❤️+30 (턴 소요)</button>
   </div>
 
-  <!-- 애프터 패널 (제압 완료 후 열림 / 이때 +4개월 누적) -->
+  <!-- 애프터 패널 -->
   <div id="after" style="display:none; margin-top:12px">
     <div style="margin-bottom:8px;font-weight:800">✅ 제압 완료!</div>
     <div>
@@ -134,7 +134,7 @@
       <button id="btnAmmoAfter" class="ok">🔄 탄종 전환 (22lr)</button>
       <button id="btnPromote" class="ok" title="연차 도달 시 활성화">🎖️ 승진도전 (<span id="cost">10</span>💰)</button>
     </div>
-    <div class="small" style="margin-top:4px">* 이 화면이 열릴 때 <b>+4개월</b> 누적됩니다.</div>
+    <div class="small" id="afterInfo" style="margin-top:6px;opacity:.95"></div>
   </div>
 
   <!-- 일반 팝업 -->
@@ -174,7 +174,7 @@
       <div class="sec"><span class="chip">제압 목록</span><span class="line"></span></div>
       <ul id="kill"></ul>
       <div class="cta">
-        <a id="gotoGallery" href="honor_memorial.html?v=0.14" class="pill" style="text-decoration:none">명예•추모관 열기</a>
+        <a id="gotoGallery" href="honor_memorial.html?v=0.15" class="pill" style="text-decoration:none">명예•추모관 열기</a>
         <button id="backToStart" class="pill">신원 선택으로</button>
       </div>
     </div>
@@ -202,7 +202,7 @@ const el = {
   btnUseBag:$("btnUseBag"),
   after:$("after"), btnRest:$("btnRest"), btnBuyBag:$("btnBuyBag"), btnUseBagAfter:$("btnUseBagAfter"),
   btnAmmoAfter:$("btnAmmoAfter"),
-  btnPromote:$("btnPromote"), cost:$("cost"),
+  btnPromote:$("btnPromote"), cost:$("cost"), afterInfo:$("afterInfo"),
   pop:$("pop"), popTitle:$("popTitle"), popList:$("popList"), popOk:$("popOk"),
   promo:$("promo"), promoTitle:$("promoTitle"), promoDesc:$("promoDesc"),
   promoD1:$("promoD1"), promoD2:$("promoD2"), promoGo:$("promoGo"), promoCancel:$("promoCancel"),
@@ -218,10 +218,10 @@ const state = {
   enemyHP:0, enemyLabel:"", cost:10,
   ended:false, startDate:new Date(),
   defeated:{}, changeLog:[],
-  monthsAccum:0, // 전투 화면엔 표시하지 않음(내부 계산용)
+  monthsAccum:0,
   ammo:'22lr', demotionCount:0,
   lastRankChangeMonths:0, lastPromoAnnivNotifiedAt:-1,
-  doubleStreak:0, // 연속 더블 보너스
+  doubleStreak:0,
 };
 
 const rint=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
@@ -232,7 +232,7 @@ const monthsInRank=()=> state.monthsAccum - state.lastRankChangeMonths;
 const fmtYM=(months)=>{ const y=Math.floor((months||0)/12), m=(months||0)%12; return m===0 ? `${String(y).padStart(2,'0')}년` : `${String(y).padStart(2,'0')}년 ${String(m).padStart(2,'0')}개월`; };
 const nthYearLabel=(m)=> `${Math.floor((m||0)/12)}년차`;
 
-const showToast=(msg,ms=1800)=>{
+const showToast=(msg,ms=2000)=>{
   el.toastMsg.textContent=msg;
   el.toast.style.display='block';
   setTimeout(()=>{ el.toast.style.display='none'; }, ms);
@@ -298,7 +298,7 @@ function minMonthsForNext(idx){
   if (idx >= 1 && idx <= 4) return 12;    // 순경~경위: 최소 1년
   if (idx >= 5 && idx <= 6) return 24;    // 경감·경정: 최소 2년
   if (idx >= 7 && idx <= 10) return 12;   // 총경~치안정감: 최소 1년
-  return 0;                               // 치안총감: 상한
+  return 0;                               // 치안총감
 }
 function costForRank(idx){
   if(idx===0) return 7; // 의경→순경
@@ -314,7 +314,7 @@ function pickEnemy(){
   state.enemyHP=9+state.level*1;
 }
 function spawnEnemy(){
-  el.after.style.display="none"; // 전투 시작 시 after 패널 숨김
+  el.after.style.display="none";
   pickEnemy(); updateHUD();
   el.msg.textContent="⚔️ 제압 중...";
   el.pDice.textContent="🎲"; el.eDice.textContent="🎲";
@@ -335,6 +335,37 @@ function logRankChange(kind, prevIdx, nowIdx){
   state.changeLog.push(`${icon} ${prev} → ${now} ${kind} (해당 계급 ${label} ${kind})`);
 }
 
+// ---------- 계산 유틸 (애프터 패널 정보) ----------
+function monthsToNextEligibleAnniv(){
+  const m = monthsInRank();
+  const need = minMonthsForNext(state.rankIdx);
+  const target = Math.ceil(Math.max(m+1, need)/12)*12; // 다음 '조건 충족' 연차
+  return Math.max(0, target - m);
+}
+function monthsToLongService(){
+  const idx=state.rankIdx; const m=monthsInRank();
+  let need=null;
+  if(idx===0) need=36;
+  else if(idx===1) need=48;
+  else if(idx===2) need=60;
+  else if(idx===3) need=78;
+  else if(idx===4) need=96;
+  if(need==null) return null;
+  return Math.max(0, need - m);
+}
+function updateAfterInfo(){
+  // 승진 도전까지
+  const mp = monthsToNextEligibleAnniv();
+  const pBattles = Math.max(0, Math.ceil(mp/4));
+  // 근속 승진까지
+  const ml = monthsToLongService();
+  const lBattles = (ml==null) ? null : Math.max(0, Math.ceil(ml/4));
+  let line = `🎖️ 승진 도전까지 ${pBattles} 전투(애프터) 남음`;
+  line += " / ";
+  line += (lBattles==null) ? `근속 승진 없음` : `근속 승진까지 ${lBattles} 전투 남음`;
+  el.afterInfo.textContent = line;
+}
+
 // ---------- 애프터 패널 열릴 때만 +4개월 ----------
 function showAfterPanelThenAccrue(){
   el.after.style.display="block";
@@ -342,6 +373,7 @@ function showAfterPanelThenAccrue(){
   checkLongServicePromotion();
   checkRetirement();
   updatePromotionAvailability();
+  updateAfterInfo();
 }
 
 // ---------- 전투 처리 ----------
@@ -356,11 +388,8 @@ function applyDoubleStreak(p,e){
   if(p===e){
     state.doubleStreak += 1;
     if(state.doubleStreak>=2){
-      const bonus = 10*(state.doubleStreak-1);
-      state.gold += bonus; updateHUD();
-      showToast(`🎉 연속 더블 ${state.doubleStreak}회! 보너스 +${bonus}골드`);
-    }else{
-      showToast(`더블! (연속 ${state.doubleStreak}회)`,1200);
+      state.gold += 10; updateHUD();  // 2회 이상 매회 +10
+      showToast(`🎉 연속 더블 ${state.doubleStreak}회! 보너스 +10골드`, 2000);
     }
   }else{
     state.doubleStreak = 0;
@@ -443,15 +472,15 @@ function handleVictory(){
     logRankChange("강등", prevIdx, state.rankIdx);
     updateHUD(); openPopup("⬇️ 강등",[ `계급: ${RANKS[prevIdx]} → ${RANKS[state.rankIdx]}`, `최대체력 -10` ]);
     text="적 사망, 강등!";
-    if(state.demotionCount>=3){ openEnding("파면"); return; } // ★ 강등 3회 누적 파면
+    if(state.demotionCount>=3){ openEnding("파면"); return; }
   }else if(state.enemyHP<=-10){
     text="과잉진압 보상없음";
   }else{
     const earned=grantGold(); text=`적을 제압했다! +${earned} 골드`;
   }
   el.msg.textContent=text;
-  showAfterPanelThenAccrue(); // 이 시점에만 +4개월
-  state.level += 1; if(state.level>MAX_LEVEL) openEnding("계급정년퇴직"); // 만레벨 방지용(옵션)
+  showAfterPanelThenAccrue();
+  state.level += 1; if(state.level>MAX_LEVEL) openEnding("계급정년퇴직");
 }
 
 // ---------- 승진 도전 ----------
@@ -523,7 +552,8 @@ el.btnPromote.onclick=()=>{
       openPopup("❌ 승진 실패", [`필요${req}점, 당신의 점수 ${sum}점 실패`, `다음 도전 가능: 약 ${monthsUntilNextAnniv()}개월 후 연차`]);
       showToast("🎲 실패! 다음 연차에 재도전");
     }
-    el.btnPromote.disabled=true; // 같은 연차 중복 방지
+    el.btnPromote.disabled=true;
+    updateAfterInfo();
   });
 };
 
@@ -559,7 +589,7 @@ function checkLongServicePromotion(){
   }
 }
 
-// 정년퇴직(계급 정체로 인한)
+// 정년(계급 정체) & 기타 엔딩
 function checkRetirement(){
   const idx=state.rankIdx; const m=monthsInRank();
   let limit=null;
@@ -635,13 +665,10 @@ function backToStart(){
 
 el.backToStart.onclick=()=>{ backToStart(); };
 
-// 의원면직 버튼 (자산가/30년 규칙 반영)
+// 의원면직 버튼 (30년 이상은 정년퇴직, 자산가는 별도 엔딩)
 el.btnResign.onclick=()=>{
   if(state.ended) return;
-  if(state.monthsAccum>=360){ // 30년 이상 근무 상태에서 눌렀다면 정년퇴직
-    openEnding("정년퇴직");
-    return;
-  }
+  if(state.monthsAccum>=360){ openEnding("정년퇴직"); return; }
   const wealthy = (state.gold >= Math.max(500, state.cost*3));
   openEnding(wealthy ? "의원면직-자산가" : "의원면직");
 };
