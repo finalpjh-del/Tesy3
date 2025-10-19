@@ -27,7 +27,7 @@
   <div class="wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
       <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
-      <a class="btn" href="index.html?v=0.21">⬅️ 메인</a>
+      <a class="btn" href="index.html?v=0.22">⬅️ 메인</a>
     </div>
 
     <div id="motto" class="small" style="margin:8px 0 12px;font-weight:700">
@@ -90,6 +90,11 @@
     try{ return JSON.parse(localStorage.getItem("police_memorials")||"[]"); }
     catch(e){ return []; }
   }
+  function setData(arr){
+    localStorage.setItem("police_memorials", JSON.stringify(arr));
+  }
+  function byId(id){ return getData().find(x=>String(x.id)===String(id)); }
+
   function matchesQuery(it, needle){
     const t=[it.name,it.endTitle,it.currentRank,it.org,(it.achievements||[]).join(' ')].join(' ').toLowerCase();
     return t.includes(needle.toLowerCase());
@@ -137,17 +142,16 @@
 
   function downloadCard(it){
     const c=drawCardToCanvas(it);
-    // toBlob을 사용해 대용량에도 안전하게 저장
     c.toBlob(blob=>{
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
       const dateStr = new Date().toISOString().slice(0,10);
-      const safeName = (it.name||'noname').replace(/[^\w가-힣_-]+/g,'');
-      const safeEnd  = (it.endTitle||'엔딩').replace(/[^\w가-힣_-]+/g,'');
-      a.download=`${dateStr}_${safeName}_${safeEnd}.png`;
+      // 한국어/공백 허용. 파일명 안전 문자만 남김
+      const safe = s => (s||'').replace(/[\\/:*?"<>|]+/g,'').trim();
+      a.download=`${dateStr}_${safe(it.name)}_${safe(it.endTitle)}.png`;
       a.href=url; document.body.appendChild(a); a.click();
       setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); c.remove(); }, 0);
-    }, "image/png");
+    },"image/png");
   }
 
   function deleteCardWithRule(it){
@@ -155,12 +159,9 @@
     if(!fast){
       if(!confirm("정말 삭제하시겠습니까?")) return;
     }
-    try{
-      const a=JSON.parse(localStorage.getItem("police_memorials")||"[]");
-      const b=a.filter(x=>x.id!==it.id);
-      localStorage.setItem("police_memorials", JSON.stringify(b));
-      render();
-    }catch(e){}
+    const a=getData();
+    const b=a.filter(x=>x.id!==it.id);
+    setData(b); render();
   }
 
   function render(){
@@ -184,7 +185,6 @@
       const achHTML = ach.length ? `<div class="small" style="margin-top:6px"><b>업적 :</b> ${ach.join(' · ')}</div>` : "";
       const border = colorByEnding(endTitle);
       const emo = officerEmojiByGender(it.gender||"");
-      const payload = encodeURIComponent(JSON.stringify(it));
       return `
         <div class="card" style="border-color:${border}; box-shadow:0 0 0 2px ${border}20 inset;">
           <div class="title"><span class="name">${emo} ${it.name||'이름없음'}</span><span class="tag" style="background:${border}">${endTitle}</span></div>
@@ -199,13 +199,29 @@
           <div class="small" style="font-weight:800;margin:8px 0 4px">제압 목록</div>
           <div class="small">${kills}</div>
           <div class="btnrow">
-            <button class="mini" onclick='(function(){ const it=JSON.parse(decodeURIComponent("${payload}")); (${downloadCard.toString()})(it); })()'>📥 이미지 저장</button>
-            <button class="mini" style="background:#300;color:#fff" onclick='(function(){ const it=JSON.parse(decodeURIComponent("${payload}")); (${deleteCardWithRule.toString()})(it); })()'>🗑 삭제</button>
+            <button class="mini save-btn" data-id="${it.id}">📥 이미지 저장</button>
+            <button class="mini del-btn"  data-id="${it.id}" style="background:#300;color:#fff">🗑 삭제</button>
           </div>
         </div>
       `;
     }).join("");
   }
+
+  // 이벤트 위임: 한국어/특수문자 이름도 안전
+  list.addEventListener('click', (e)=>{
+    const saveBtn = e.target.closest('.save-btn');
+    const delBtn  = e.target.closest('.del-btn');
+    if(saveBtn){
+      const id = saveBtn.dataset.id;
+      const item = byId(id);
+      if(item) downloadCard(item);
+    }
+    if(delBtn){
+      const id = delBtn.dataset.id;
+      const item = byId(id);
+      if(item) deleteCardWithRule(item);
+    }
+  });
 
   [fEnding,sortBy,q].forEach(el=>el.addEventListener('input',render));
   render();
