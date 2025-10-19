@@ -26,7 +26,7 @@ body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff
 </style>
 </head>
 <body>
-<h1 style="margin:10px 0 6px">🎲 경찰 양성 🎲 <span class="small" style="opacity:.8">v0.25</span></h1>
+<h1 style="margin:10px 0 6px">🎲 경찰 양성 🎲 <span class="small" style="opacity:.8">v0.26</span></h1>
 
 <!-- 신원 선택 -->
 <div id="start" class="overlay" style="display:flex">
@@ -56,9 +56,9 @@ body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff
 
 <!-- 상단 바 -->
 <div class="bar">
-  <a class="pill" href="index.html?v=0.25">⬅️ 메인</a>
+  <a class="pill" href="index.html?v=0.26">⬅️ 메인</a>
   <span id="orgBadge" class="pill">🚓 경찰</span>
-  <span class="pill">버전 v0.25</span>
+  <button id="btnResign" class="pill">📝 의원면직</button>
 </div>
 
 <!-- HUD -->
@@ -67,6 +67,7 @@ body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff
   | ❤️ <span id="hp">50</span>/<span id="maxhp">50</span>
   | 💰 <span id="gold">0</span>
   | 💉 <span id="bags">0</span>
+  | 🔫 <span id="weapon">무기없음</span>
 </div>
 
 <!-- 적 정보 -->
@@ -76,17 +77,12 @@ body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff
 <div class="btnrow">
   <button id="btnRoll" class="ok">🎲 굴리기</button>
   <button id="btnBaton" class="ok">🦯 삼단봉 (1💰)</button>
-  <button id="btnFire" class="ok">🔫 격발 (준비중)</button>
-  <button id="btnUseBag" class="ok">💉 ❤️+30 (턴 소요)</button>
+  <button id="btnFire" class="ok">🔫 격발</button>
+  <button id="btnSwitchWeapon" class="pill">🔄 무기변환</button>
 </div>
 
-<!-- 요건 한 줄 안내 -->
-<div id="reqLine" class="small" style="margin-top:4px">🎖️ 7점 이상시 승진! (연차 도달 시)</div>
-
-<!-- 주사위 영역 -->
-<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:4px">
-  나: <span id="pDice">🎲</span> 적: <span id="eDice">🎲</span>
-</div>
+<!-- 전투 중 구급함 -->
+<div style="margin-top:6px"><button id="btnUseBag" class="ok">💉 ❤️+30 (턴 소요)</button></div>
 
 <!-- 애프터 패널 -->
 <div id="after" style="display:none; margin-top:12px">
@@ -97,9 +93,16 @@ body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff
     <button id="btnUseBagAfter" class="ok">💉 사용 (❤️+30)</button>
     <button id="btnPromote" class="ok" title="연차 도달 시 활성화">🎖️ 승진도전 (10💰)</button>
   </div>
+  <!-- 무기구입 패널 복구 -->
+  <div class="afterrow" style="margin-top:6px">
+    <button id="buy22"  class="pill">22lr 권총 (10💰)</button>
+    <button id="buy9"   class="pill">9mm 권총 (20💰)</button>
+    <button id="buyShot" class="pill">엽총 (35💰)</button>
+    <button id="buyTaser" class="pill">테이저건 (50💰)</button>
+  </div>
 </div>
 
-<!-- 승진 도전 모달 -->
+<!-- 승진 도전 모달 (필요 점수 표기) -->
 <div id="promo" class="overlay">
   <div class="modal" style="max-width:680px;text-align:center">
     <div style="font-weight:800">🎖️ 승진도전</div>
@@ -119,29 +122,30 @@ body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff
 
 <script>
 (()=>{
-// ====== 상태 & 유틸 ======
+// ====== 공통 ======
 const $=id=>document.getElementById(id);
 const D=['⚀','⚁','⚂','⚃','⚄','⚅'];
 const R=["의경","순경","경장","경사","경위","경감","경정","총경","경무관","치안감","치안정감","치안총감"];
 const rint=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 
+// ====== 상태 ======
 const state={
   org:"police", gender:"M", name:"—",
   rankIdx:1, entryRank:"순경",
   maxHP:50, hp:50, gold:0, bags:0,
   level:1, enemyHP:0, enemyLabel:"",
-  monthsAccum:0, rankMonths:Array(R.length).fill(0),  // 계급별 누적 개월(의경 분리)
+  monthsAccum:0, rankMonths:Array(R.length).fill(0),
   rolling:false, toasting:false, toastQ:[],
+  weapon:null, // '22lr'|'9mm'|'shot'|'taser'|null
   promoLockedUntilNextAnniv:false
 };
 
-// 요구점수 & 연차 최소개월(간단 규칙)
+// ====== 규칙(요건/연차) ======
 const reqByRank=i=> i===0?6 : i<=3?7 : i<=6?8 : i<=9?9 : i===10?10 : 12;
-const minMonths=i=> i===0?36 : i<=4?12 : i<=6?24 : i<=10?12 : 12; // 의경 3년, 순경~경위 1년, 경감~경정 2년
-
+const minMonths=i=> i===0?36 : i<=4?12 : i<=6?24 : i<=10?12 : 12; // 의경3y, 순경~경위1y, 경감~경정2y
 const monthsInCurrentRank=()=>state.rankMonths[state.rankIdx];
 
-// ====== 토스트 큐(2초) ======
+// ====== 토스트(2초 큐) ======
 function pushToast(msg){ state.toastQ.push(msg); runToast(); }
 function runToast(){
   if(state.toasting || state.toastQ.length===0) return;
@@ -149,6 +153,46 @@ function runToast(){
   const m=state.toastQ.shift();
   $("toastMsg").textContent=m; $("toast").style.display="block";
   setTimeout(()=>{ $("toast").style.display="none"; state.toasting=false; runToast(); }, 2000);
+}
+
+// ====== 저장(명예·추모관) ======
+function saveToMemorial(payload){
+  try{
+    const key="police_memorials";
+    const arr=JSON.parse(localStorage.getItem(key)||"[]");
+    payload.id=Date.now();
+    arr.push(payload);
+    localStorage.setItem(key, JSON.stringify(arr));
+  }catch(e){}
+}
+
+// ====== 엔딩(순직: 3초 디졸브 후) ======
+function showFallenEnding(){
+  const d=$("diss"); d.style.opacity=1;
+  // 1계급 특진
+  const beforeRank = state.rankIdx;
+  const afterRank = Math.min(R.length-1, state.rankIdx+1);
+  setTimeout(()=>{
+    d.style.opacity=0;
+    alert(`🕯 순직\n\n${state.name}님은 임무 중 순직했습니다.\n"순직으로 인한 1계급 특진" (${R[beforeRank]} → ${R[afterRank]})`);
+    // 추모관 저장
+    saveToMemorial({
+      name: state.name,
+      gender: state.gender,
+      org: state.org==='coast'?'해양경찰':'경찰',
+      entryRank: state.entryRank,
+      currentRank: R[afterRank],
+      endTitle: "순직",
+      startDate: new Date().toISOString(), // 시작일을 추적했다면 그 값을 사용
+      months: state.monthsAccum,
+      finalGold: state.gold,
+      achievements: [],
+      changeLog: [`순직으로 인한 1계급 특진: ${R[beforeRank]} → ${R[afterRank]}`],
+      defeated: {}
+    });
+    // 리셋 또는 메인으로
+    location.href="honor_memorial.html?v=0.26";
+  },3000);
 }
 
 // ====== 신원 선택 ======
@@ -165,6 +209,7 @@ $("btnStart").onclick=()=>{
   // 초기화
   state.maxHP=50; state.hp=50; state.gold=0; state.bags=0;
   state.level=1; state.monthsAccum=0; state.rankMonths=Array(R.length).fill(0);
+  state.weapon=null;
   $("start").style.display="none";
   spawn(); updateHUD();
 };
@@ -178,11 +223,12 @@ function updateHUD(){
   $("orgBadge").textContent = state.org==='coast'?'🚤 해양경찰':'🚓 경찰';
   $("hp").textContent=state.hp; $("maxhp").textContent=state.maxHP;
   $("gold").textContent=state.gold; $("bags").textContent=state.bags;
+  $("weapon").textContent=state.weapon?state.weapon.toUpperCase():'무기없음';
   $("enemyName").textContent=state.enemyLabel; $("enemyHP").textContent=state.enemyHP;
-  $("reqLine").textContent=`🎖️ ${reqByRank(state.rankIdx)}점 이상시 승진! (연차 도달 시)`;
   const inBattle = state.enemyHP>0 && $("after").style.display!=="block";
-  ["btnRoll","btnBaton","btnFire","btnUseBag"].forEach(id=>$(id).disabled = !inBattle || state.rolling);
-  // 승진 버튼 활성화 조건(연차 & 잠금 해제 & 비용)
+  ["btnRoll","btnBaton","btnFire","btnUseBag","btnSwitchWeapon"].forEach(id=>$(id).disabled = !inBattle || state.rolling);
+  // 승진 버튼: 연차 & 잠금 & 비용
+  const need=reqByRank(state.rankIdx);
   const m=monthsInCurrentRank(); const okYear = m>=minMonths(state.rankIdx) && m%12===0;
   $("btnPromote").disabled = !(okYear && !state.promoLockedUntilNextAnniv && state.gold>=10);
 }
@@ -200,44 +246,33 @@ function rollDiceAnim(done){
   },80);
 }
 
-// 한 턴 종료 뒤 처리( + 토스트 큐는 여기서 )
-function endTurnToasts({double2,bRes,fireRes,overforce,reward}){
-  if(double2) pushToast(`🎲 더블 연속! +10💰`);
-  if(bRes)    pushToast(`🦯 삼단봉: 주사위 ${bRes.p} ×2 = ${bRes.dmg} 피해`);
-  if(fireRes) pushToast(`🔫 격발: ${fireRes.msg}`);
-  if(overforce) pushToast(`⚠️ 과잉진압! 페널티 적용`);
-  if(reward)  pushToast(`🏅 제압 보상: +${reward}💰`);
+// 한 턴 종료 후 토스트
+function endTurnToasts({bRes,reward}){
+  if(bRes) pushToast(`🦯 삼단봉: 주사위 ${bRes.p} ×2 = ${bRes.dmg} 피해`);
+  if(reward) pushToast(`🏅 제압 보상: +${reward}💰`);
 }
 
-// 엔딩(3초 디졸브)
-function showEnding(text){
-  const d=$("diss"); d.style.opacity=1; // 3s 트랜지션
-  setTimeout(()=>{
-    alert(text); // 간단 엔딩 패널(필요 시 별도 레이아웃 교체 가능)
-    d.style.opacity=0;
-  },3000);
+// HP 체크 → 순직 엔딩
+function checkDeath(){
+  if(state.hp<=0){ showFallenEnding(); return true; }
+  return false;
 }
 
 // ====== 버튼 ======
 $("btnRoll").onclick=()=>{
   if(state.enemyHP<=0 || $("after").style.display==="block") return;
   rollDiceAnim((p,e)=>{
-    const double2 = (D[p-1]===D[e-1]); // 간단 더블判 (연속은 필요 시 상태확장)
     state.enemyHP=Math.max(0,state.enemyHP-p);
     state.hp=Math.max(0,state.hp-e);
-    let reward=0;
+    if(checkDeath()) return;
     if(state.enemyHP<=0){
-      reward = 5 + state.level;
+      const reward = 5 + state.level;
       state.gold += reward;
-      // 토스트 먼저(턴 직후) → 그다음 애프터 오픈
-      endTurnToasts({double2,reward});
-      // 애프터 패널 +4개월 누적
+      endTurnToasts({reward});
       $("after").style.display="block";
-      state.level++; // 다음 적 레벨(표시는 다음 출근 시)
+      state.level++;
       state.monthsAccum+=4;
-      state.rankMonths[state.rankIdx]+=4; // 현 계급 근무 개월 증가(의경 분리)
-    }else{
-      endTurnToasts({double2});
+      state.rankMonths[state.rankIdx]+=4;
     }
     updateHUD();
   });
@@ -250,9 +285,9 @@ $("btnBaton").onclick=()=>{
     const dmg=p*2;
     state.enemyHP=Math.max(0, state.enemyHP - dmg);
     state.hp=Math.max(0, state.hp - e);
-    let reward=0;
+    if(checkDeath()) return;
     if(state.enemyHP<=0){
-      reward = 5 + state.level;
+      const reward = 5 + state.level;
       state.gold += reward;
       endTurnToasts({bRes:{p,dmg},reward});
       $("after").style.display="block";
@@ -269,65 +304,133 @@ $("btnBaton").onclick=()=>{
 $("btnUseBag").onclick=()=>{
   if(state.bags<=0 || state.hp===state.maxHP || state.enemyHP<=0) return;
   state.bags--; state.hp=Math.min(state.maxHP, state.hp+30);
-  // 턴 소요: 적만 굴림
+  // 턴 소요: 적만 주사위
   rollDiceAnim((_,e)=>{
     state.hp=Math.max(0,state.hp-e);
+    if(checkDeath()) return;
     updateHUD();
   });
 };
 
-$("btnRest").onclick=()=>{
-  // 다음 전투로
-  $("after").style.display="none";
-  state.enemyLabel=`Lv.${state.level} 용의자`; state.enemyHP=15 + state.level*2;
+// 격발(간단 버전: 무기별 명중률/데미지/비용)
+const WEAPONS = {
+  "22lr": {cost:3, hit:0.75, dmg:[20,30]},
+  "9mm":  {cost:4, hit:0.70, dmg:[25,40]},
+  "shot": {cost:6, hit:0.60, dmg:[40,60]},
+  "taser":{cost:10,hit:0.20, special:"kill"} // 20% 즉시 제압
+};
+$("btnFire").onclick=()=>{
+  if(state.enemyHP<=0) return;
+  if(!state.weapon){ pushToast("🔫 무기가 없습니다. 애프터에서 구매하세요."); return; }
+  const w=WEAPONS[state.weapon];
+  if(state.gold<w.cost){ pushToast("💸 골드 부족"); return; }
+  state.gold-=w.cost;
+  // 턴 공유: 나/적 동시에 주사위 1회
+  rollDiceAnim((p,e)=>{
+    if(w.special==="kill"){ if(Math.random()<w.hit){ state.enemyHP=0; } }
+    else {
+      if(Math.random()<w.hit){
+        const dmg=rint(w.dmg[0],w.dmg[1]);
+        state.enemyHP=Math.max(0,state.enemyHP-dmg);
+        pushToast(`🔫 격발 적중! -${dmg}`);
+      }else{
+        pushToast("🔫 빗나감");
+      }
+    }
+    state.hp=Math.max(0,state.hp-e);
+    if(checkDeath()) return;
+    if(state.enemyHP<=0){
+      const reward = 5 + state.level;
+      state.gold += reward;
+      endTurnToasts({reward});
+      $("after").style.display="block";
+      state.level++;
+      state.monthsAccum+=4;
+      state.rankMonths[state.rankIdx]+=4;
+    }
+    updateHUD();
+  });
+};
+
+// 무기 변환(소유 중일 때만 순환)
+$("btnSwitchWeapon").onclick=()=>{
+  const owned = Object.keys(WEAPONS).filter(k=>state[`own_${k}`]);
+  if(owned.length===0){ pushToast("🔄 보유 무기가 없습니다."); return; }
+  if(!state.weapon){ state.weapon=owned[0]; }
+  else{
+    const idx=owned.indexOf(state.weapon);
+    state.weapon=owned[(idx+1)%owned.length];
+  }
   updateHUD();
+};
+
+// 애프터 패널
+$("btnRest").onclick=()=>{
+  $("after").style.display="none";
+  spawn(); updateHUD();
 };
 $("btnBuyBag").onclick=()=>{ if(state.gold>=5){ state.gold-=5; state.bags++; updateHUD(); } };
 $("btnUseBagAfter").onclick=()=>{ if(state.bags>0 && state.hp<state.maxHP){ state.bags--; state.hp=Math.min(state.maxHP,state.hp+30); updateHUD(); } };
+// 무기구입 복구
+$("buy22").onclick=()=>{ if(state.gold>=10){ state.gold-=10; state.own_22lr=true; state.weapon=state.weapon||'22lr'; updateHUD(); } };
+$("buy9").onclick=()=>{ if(state.gold>=20){ state.gold-=20; state.own_9mm=true; state.weapon=state.weapon||'9mm'; updateHUD(); } };
+$("buyShot").onclick=()=>{ if(state.gold>=35){ state.gold-=35; state.own_shot=true; state.weapon=state.weapon||'shot'; updateHUD(); } };
+$("buyTaser").onclick=()=>{ if(state.gold>=50){ state.gold-=50; state.own_taser=true; state.weapon=state.weapon||'taser'; updateHUD(); } };
 
-// 승진도전
+// 승진 도전(모달에서 필요점수 표기, 시도 후 이번 연차 비활성화)
 $("btnPromote").onclick=()=>{
   const need=reqByRank(state.rankIdx);
   const m=monthsInCurrentRank();
   const okYear = m>=minMonths(state.rankIdx) && m%12===0;
-  if(!okYear) return; if(state.gold<10) return;
+  if(!okYear || state.gold<10 || state.promoLockedUntilNextAnniv) return;
   $("promo").style.display="flex";
   $("promoNeed").textContent=`필요 점수: ${need} 이상`;
-  $("presult").textContent=""; $("promoClose").disabled=true;
-  // 2초 후부터 닫기 가능(지시사항 11)
+  $("presult").textContent=""; $("promoClose").disabled=true; $("promoGo").disabled=false;
   setTimeout(()=>{$("promoClose").disabled=false;},2000);
 
-  $("promoGo").disabled=false;
   $("promoGo").onclick=()=>{
     $("promoGo").disabled=true;
-    // 간단 애니메이션 대신 바로 결과(원하면 0.5s 굴림 추가)
     const a=rint(1,6), b=rint(1,6), sum=a+b;
     $("pd1").textContent=D[a-1]; $("pd2").textContent=D[b-1];
     state.gold-=10;
     if(sum>=need){
       state.rankIdx=Math.min(R.length-1, state.rankIdx+1);
       state.maxHP+=10; state.hp=state.maxHP;
-      state.rankMonths[state.rankIdx-1]=0; // 이전 계급 카운터는 그대로 두거나 초기화 — 승진 후 현 계급 카운터는 0
-      // 새 계급 카운터 0으로
-      // (배열은 rankIdx 기준이라 승진 후 증가분은 이후 전투에서 더해짐)
+      // 새 계급 근무개월은 0부터
+      // 이전 계급 카운터는 그대로(통계용), 현 rankIdx 카운터는 이후 +4개월 때 증가
       pushToast(`✅ 승진 성공! (필요 ${need}, 당신 ${sum})`);
     }else{
       pushToast(`❌ 승진 실패… (필요 ${need}, 당신 ${sum})`);
     }
-    // 이번 연차 창에선 재도전 불가
-    state.promoLockedUntilNextAnniv=true;
+    state.promoLockedUntilNextAnniv=true;  // 이번 연차 잠금(버튼 비활성화 효과 강화)
     updateHUD();
   };
 };
-
 $("promoClose").onclick=()=>{ $("promo").style.display="none"; };
 
-// (예시) 엔딩 호출이 필요한 상황에서
-// showEnding("명예퇴직 엔딩");
+// 의원면직(간단 처리: 엔딩 저장 후 추모관 이동)
+$("btnResign").onclick=()=>{
+  if(!confirm("의원면직 하시겠습니까?")) return;
+  saveToMemorial({
+    name: state.name,
+    gender: state.gender,
+    org: state.org==='coast'?'해양경찰':'경찰',
+    entryRank: state.entryRank,
+    currentRank: R[state.rankIdx],
+    endTitle: "의원면직",
+    startDate: new Date().toISOString(),
+    months: state.monthsAccum,
+    finalGold: state.gold,
+    achievements: [],
+    changeLog: ["의원면직"],
+    defeated: {}
+  });
+  location.href="honor_memorial.html?v=0.26";
+};
 
-// 초기화
-function firstSpawn(){ state.enemyLabel=`Lv.${state.level} 용의자`; state.enemyHP=15 + state.level*2; }
-firstSpawn(); updateHUD();
+// 초기
+$("start").style.display="flex";
+spawn(); updateHUD();
 })();
 </script>
 </body>
