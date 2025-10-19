@@ -30,10 +30,6 @@
       <a class="btn" href="index.html?v=0.22">⬅️ 메인</a>
     </div>
 
-    <div id="motto" class="small" style="margin:8px 0 12px;font-weight:700">
-      명예와 헌신으로 지켜낸 발자취를 기억합니다.
-    </div>
-
     <div class="toolbar">
       <select id="fEnding">
         <option value="">전체 엔딩</option>
@@ -59,17 +55,14 @@
 <script>
 (function(){
   const $=s=>document.querySelector(s);
-  const list=$("#list");
-  const fEnding=$("#fEnding");
-  const sortBy=$("#sortBy");
-  const q=$("#q");
+  const list=$("#list"), fEnding=$("#fEnding"), sortBy=$("#sortBy"), q=$("#q");
   const RANKS=["의경","순경","경장","경사","경위","경감","경정","총경","경무관","치안감","치안정감","치안총감"];
 
-  const fmtDate=(d)=> new Date(d).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
-  const fmtYM=(months)=>{ const y=Math.floor((months||0)/12), m=(months||0)%12; return m===0? `${String(y).padStart(2,'0')}년` : `${String(y).padStart(2,'0')}년 ${String(m).padStart(2,'0')}개월`; };
+  const fmtDate=d=> new Date(d).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+  const fmtYM=m=>{m=m||0;const y=Math.floor(m/12), mm=m%12;return mm===0?`${String(y).padStart(2,'0')}년`:`${String(y).padStart(2,'0')}년 ${String(mm).padStart(2,'0')}개월`;};
 
-  function colorByEnding(endTitle){
-    switch(endTitle){
+  const colorByEnding=t=>{
+    switch(t){
       case "명예퇴직": return "#2e7d32";
       case "계급정년퇴직": return "#1565c0";
       case "정년퇴직": return "#0d47a1";
@@ -79,47 +72,36 @@
       case "의원면직-자산가": return "#f9a825";
       default: return "#263238";
     }
-  }
-  function officerEmojiByGender(g){
-    if(g==="F") return "👮‍♀️";
-    if(g==="M") return "👮‍♂️";
-    return "👮";
-  }
+  };
+  const officerEmojiByGender=g=> g==="F"?"👮‍♀️":g==="M"?"👮‍♂️":"👮";
 
-  function getData(){
-    try{ return JSON.parse(localStorage.getItem("police_memorials")||"[]"); }
-    catch(e){ return []; }
-  }
-  function setData(arr){
-    localStorage.setItem("police_memorials", JSON.stringify(arr));
-  }
-  function byId(id){ return getData().find(x=>String(x.id)===String(id)); }
+  const getData=()=>{ try{return JSON.parse(localStorage.getItem("police_memorials")||"[]");}catch(e){return[];} };
+  const setData=a=> localStorage.setItem("police_memorials", JSON.stringify(a));
+  const byId=id=> getData().find(x=>String(x.id)===String(id));
 
-  function matchesQuery(it, needle){
+  const matchesQuery=(it, n)=>{
     const t=[it.name,it.endTitle,it.currentRank,it.org,(it.achievements||[]).join(' ')].join(' ').toLowerCase();
-    return t.includes(needle.toLowerCase());
-  }
+    return t.includes(n.toLowerCase());
+  };
 
-  // ---- 카드 이미지를 캔버스로 생성 (버튼 미포함) ----
+  // --- 카드 이미지를 캔버스로 생성 (버튼/삭제 링크는 포함 X) ---
   function drawCardToCanvas(it){
-    const W=840, H=520, pad=28;
+    const W=840,H=520,pad=28;
     const c=document.createElement('canvas'); c.width=W; c.height=H;
     const g=c.getContext('2d');
 
-    // 배경
-    const color = colorByEnding(it.endTitle||"");
     const grad=g.createLinearGradient(0,0,W,H);
-    grad.addColorStop(0,color); grad.addColorStop(1,"#000");
+    grad.addColorStop(0,colorByEnding(it.endTitle||"")); grad.addColorStop(1,"#000");
     g.fillStyle=grad; g.fillRect(0,0,W,H);
+
     g.fillStyle='rgba(255,255,255,0.94)'; g.fillRect(pad,pad,W-2*pad,H-2*pad);
 
-    // 텍스트
     g.fillStyle='#111';
     g.font='bold 28px system-ui,-apple-system,Segoe UI,Roboto,Arial';
     g.fillText('명예·추모 카드', pad+14, pad+40);
     g.font='16px system-ui,-apple-system,Segoe UI,Roboto,Arial';
 
-    const lines = [
+    const lines=[
       `엔딩: ${it.endTitle||''}`,
       `이름: ${it.name||''}`,
       `임용: ${fmtDate(it.startDate)}  ${it.org||''}  시작계급: ${it.entryRank||''}`,
@@ -128,66 +110,60 @@
       `마지막 보유 골드: ${it.finalGold||0}`,
       ...(it.achievements&&it.achievements.length?[`업적: ${it.achievements.join(' · ')}`]:[])
     ];
-    let y=pad+80;
-    lines.forEach(t=>{ g.fillText(t, pad+14, y); y+=28; });
+    let y=pad+80; lines.forEach(t=>{ g.fillText(t,pad+14,y); y+=28; });
 
     g.font='bold 18px system-ui,-apple-system,Segoe UI,Roboto,Arial';
     g.fillText('승진/강등 이력', pad+14, y+12); y+=32;
     g.font='14px system-ui,-apple-system,Segoe UI,Roboto,Arial';
-    const promos=(it.changeLog||[]);
-    promos.slice(0,8).forEach(s=>{ g.fillText(`• ${s}`, pad+14, y); y+=22; });
+    (it.changeLog||[]).slice(0,8).forEach(s=>{ g.fillText(`• ${s}`, pad+14, y); y+=22; });
 
     return c;
   }
 
+  // PNG 저장(파일명 고정)
   function downloadCard(it){
     const c=drawCardToCanvas(it);
     c.toBlob(blob=>{
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
-      const dateStr = new Date().toISOString().slice(0,10);
-      // 한국어/공백 허용. 파일명 안전 문자만 남김
-      const safe = s => (s||'').replace(/[\\/:*?"<>|]+/g,'').trim();
-      a.download=`${dateStr}_${safe(it.name)}_${safe(it.endTitle)}.png`;
+      a.download="memorial.png";  // 파일명 고정
       a.href=url; document.body.appendChild(a); a.click();
       setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); c.remove(); }, 0);
     },"image/png");
   }
 
   function deleteCardWithRule(it){
-    const fast = (it.endTitle==="순직" || it.endTitle==="의원면직");
-    if(!fast){
-      if(!confirm("정말 삭제하시겠습니까?")) return;
-    }
-    const a=getData();
-    const b=a.filter(x=>x.id!==it.id);
-    setData(b); render();
+    const fast=(it.endTitle==="순직"||it.endTitle==="의원면직");
+    if(!fast){ if(!confirm("정말 삭제하시겠습니까?")) return; }
+    const a=getData().filter(x=>x.id!==it.id); setData(a); render();
   }
 
   function render(){
     let arr=getData();
     if(fEnding.value) arr=arr.filter(x=>x.endTitle===fEnding.value);
     if(q.value.trim()) arr=arr.filter(x=>matchesQuery(x,q.value.trim()));
-    if(sortBy.value==="new"){ arr.sort((a,b)=>b.id-a.id); }
-    else if(sortBy.value==="rank"){ arr.sort((a,b)=>RANKS.indexOf(b.currentRank)-RANKS.indexOf(a.currentRank)); }
-    else if(sortBy.value==="name"){ arr.sort((a,b)=> (a.name||'').localeCompare(b.name||'')); }
+    if(sortBy.value==="new") arr.sort((a,b)=>b.id-a.id);
+    else if(sortBy.value==="rank") arr.sort((a,b)=>RANKS.indexOf(b.currentRank)-RANKS.indexOf(a.currentRank));
+    else if(sortBy.value==="name") arr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
 
     if(!arr.length){ list.innerHTML='<div class="small">조건에 맞는 기록이 없습니다.</div>'; return; }
 
     list.innerHTML=arr.map(it=>{
-      const endTitle = it.endTitle || '엔딩';
-      const promos = (it.changeLog||[]).map(s=>`• ${s}`).join("<br>") || "기록 없음";
-      const kills = Object.entries(it.defeated||{}).map(([k,v])=>`${k}: ${v}명`).join("<br>") || "기록 없음";
-      const startLine = `임용 : ${fmtDate(it.startDate)} ${it.org||''} ${it.entryRank||''}`;
-      const period = `근무기간 : ${fmtYM(it.months||0)}`;
-      const current = `현재 계급 : ${it.currentRank||''}`;
-      const ach = (it.achievements||[]);
-      const achHTML = ach.length ? `<div class="small" style="margin-top:6px"><b>업적 :</b> ${ach.join(' · ')}</div>` : "";
-      const border = colorByEnding(endTitle);
-      const emo = officerEmojiByGender(it.gender||"");
+      const endTitle=it.endTitle||'엔딩';
+      const border=colorByEnding(endTitle);
+      const promos=(it.changeLog||[]).map(s=>`• ${s}`).join("<br>")||"기록 없음";
+      const kills=Object.entries(it.defeated||{}).map(([k,v])=>`${k}: ${v}명`).join("<br>")||"기록 없음";
+      const startLine=`임용 : ${fmtDate(it.startDate)} ${it.org||''} ${it.entryRank||''}`;
+      const period=`근무기간 : ${fmtYM(it.months||0)}`;
+      const current=`현재 계급 : ${it.currentRank||''}`;
+      const ach=(it.achievements||[]);
+      const achHTML=ach.length?`<div class="small" style="margin-top:6px"><b>업적 :</b> ${ach.join(' · ')}</div>`:"";
+      const emo=officerEmojiByGender(it.gender||"");
       return `
         <div class="card" style="border-color:${border}; box-shadow:0 0 0 2px ${border}20 inset;">
-          <div class="title"><span class="name">${emo} ${it.name||'이름없음'}</span><span class="tag" style="background:${border}">${endTitle}</span></div>
+          <div class="title"><span class="name">${emo} ${it.name||'이름없음'}</span>
+            <span class="tag" style="background:${border}">${endTitle}</span>
+          </div>
           <div>${startLine}</div>
           <div>${current}</div>
           <div>${period}</div>
@@ -200,27 +176,17 @@
           <div class="small">${kills}</div>
           <div class="btnrow">
             <button class="mini save-btn" data-id="${it.id}">📥 이미지 저장</button>
-            <button class="mini del-btn"  data-id="${it.id}" style="background:#300;color:#fff">🗑 삭제</button>
+            <button class="mini del-btn" data-id="${it.id}" style="background:#300;color:#fff">🗑 삭제</button>
           </div>
-        </div>
-      `;
+        </div>`;
     }).join("");
   }
 
-  // 이벤트 위임: 한국어/특수문자 이름도 안전
-  list.addEventListener('click', (e)=>{
-    const saveBtn = e.target.closest('.save-btn');
-    const delBtn  = e.target.closest('.del-btn');
-    if(saveBtn){
-      const id = saveBtn.dataset.id;
-      const item = byId(id);
-      if(item) downloadCard(item);
-    }
-    if(delBtn){
-      const id = delBtn.dataset.id;
-      const item = byId(id);
-      if(item) deleteCardWithRule(item);
-    }
+  // 이벤트 위임(버튼은 data-id만 보유)
+  list.addEventListener('click',e=>{
+    const s=e.target.closest('.save-btn'); const d=e.target.closest('.del-btn');
+    if(s){ const item=byId(s.dataset.id); if(item) downloadCard(item); }
+    if(d){ const item=byId(d.dataset.id); if(item) deleteCardWithRule(item); }
   });
 
   [fEnding,sortBy,q].forEach(el=>el.addEventListener('input',render));
