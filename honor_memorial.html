@@ -1,137 +1,185 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>명예·추모관</title>
 <style>
-  :root{--bg1:#ff9966;--bg2:#ff5e62}
-  *{box-sizing:border-box} html,body{height:100%}
-  body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-  .wrap{max-width:1100px;margin:0 auto;padding:24px 14px}
-  a.btn{display:inline-block;background:#0b1020;color:#fff;padding:10px 14px;border-radius:12px;text-decoration:none;font-weight:700}
-  .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
-  .toolbar select,.toolbar input{padding:8px 10px;border-radius:10px;border:0}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:12px}
-  .card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:14px}
-  .title{font-weight:900;margin-bottom:6px;display:flex;align-items:center;gap:8px}
-  .name{font-weight:900}
-  .small{font-size:12px;opacity:.9}
-  .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#0005;margin-left:auto;font-size:12px}
-  .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .mini{padding:6px 10px;border-radius:10px;border:0;cursor:pointer}
-  .save{background:#0b1020;color:#fff} .del{background:#300;color:#fff}
+:root{--bg1:#ff9966;--bg2:#ff5e62}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 14px}
+a.btn{display:inline-block;background:#0b1020;color:#fff;padding:10px 14px;border-radius:12px;text-decoration:none;font-weight:700}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.toolbar select,.toolbar input{padding:8px 10px;border-radius:10px;border:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:12px}
+.card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:14px}
+.title{font-weight:900;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.name{font-weight:900}.small{font-size:12px;opacity:.9}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#0005;margin-left:auto;font-size:12px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.mini{padding:6px 10px;border-radius:10px;border:0;cursor:pointer}.save{background:#0b1020;color:#fff}.del{background:#300;color:#fff}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-      <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
-      <a class="btn" href="index.html?v=0.23">⬅️ 메인</a>
-    </div>
-
-    <div class="toolbar">
-      <select id="fEnding">
-        <option value="">전체 엔딩</option>
-        <option>명예퇴직</option><option>계급정년퇴직</option><option>정년퇴직</option>
-        <option>순직</option><option>파면</option><option>의원면직</option><option>의원면직-자산가</option>
-      </select>
-      <select id="sortBy">
-        <option value="new">정렬: 최신순</option>
-        <option value="rank">정렬: 계급순</option>
-        <option value="name">정렬: 이름순</option>
-      </select>
-      <input id="q" placeholder="검색: 이름/엔딩/계급/조직/업적" />
-    </div>
-
-    <div class="grid" id="list"></div>
+<div class="wrap">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+    <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
+    <a class="btn" href="index.html?v=0.24">⬅️ 메인</a>
   </div>
 
+  <div class="toolbar">
+    <select id="f"><option value="">전체 엔딩</option><option>명예퇴직</option><option>계급정년퇴직</option><option>정년퇴직</option><option>순직</option><option>파면</option><option>의원면직</option><option>의원면직-자산가</option></select>
+    <select id="s"><option value="new">정렬: 최신순</option><option value="rank">정렬: 계급순</option><option value="name">정렬: 이름순</option></select>
+    <input id="q" placeholder="검색: 이름/엔딩/계급/조직/업적">
+  </div>
+
+  <div class="grid" id="list"></div>
+</div>
+
 <script>
-(function(){
-  const $=s=>document.querySelector(s);
-  const list=$("#list"), f=$("#fEnding"), s=$("#sortBy"), q=$("#q");
-  const RANKS=["의경","순경","경장","경사","경위","경감","경정","총경","경무관","치안감","치안정감","치안총감"];
-  const fmtD=d=> new Date(d).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
-  const fmtYM=m=>{m=m||0;const y=Math.floor(m/12),mm=m%12;return mm===0?`${String(y).padStart(2,'0')}년`:`${String(y).padStart(2,'0')}년 ${String(mm).padStart(2,'0')}개월`};
-  const color=t=>({명예퇴직:"#2e7d32","계급정년퇴직":"#1565c0","정년퇴직":"#0d47a1",순직:"#b71c1c",파면:"#4e342e",의원면직:"#6a1b9a","의원면직-자산가":"#f9a825"}[t]||"#263238");
-  const emo=g=>g==="F"?"👮‍♀️":g==="M"?"👮‍♂️":"👮";
-  const get=()=>{ try{return JSON.parse(localStorage.getItem("police_memorials")||"[]");}catch(e){return[];} };
-  const set=a=>localStorage.setItem("police_memorials",JSON.stringify(a));
-  const find=id=>get().find(x=>String(x.id)===String(id));
-  const match=(it,n)=>[it.name,it.endTitle,it.currentRank,it.org,(it.achievements||[]).join(' ')].join(' ').toLowerCase().includes(n.toLowerCase());
+(()=>{
+const $=s=>document.querySelector(s);
+const list=$("#list"), f=$("#f"), s=$("#s"), q=$("#q");
+const R=["의경","순경","경장","경사","경위","경감","경정","총경","경무관","치안감","치안정감","치안총감"];
+const fmtD=d=>new Date(d).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+const fmtYM=m=>{m=m||0;const y=Math.floor(m/12),mm=m%12;return mm===0?`${String(y).padStart(2,'0')}년`:`${String(y).padStart(2,'0')}년 ${String(mm).padStart(2,'0')}개월`};
+const color=t=>({명예퇴직:"#2e7d32","계급정년퇴직":"#1565c0","정년퇴직":"#0d47a1",순직:"#b71c1c",파면:"#4e342e",의원면직:"#6a1b9a","의원면직-자산가":"#f9a825"}[t]||"#263238");
+const emo=g=>g==="F"?"👮‍♀️":g==="M"?"👮‍♂️":"👮";
+const get=()=>{try{return JSON.parse(localStorage.getItem("police_memorials")||"[]");}catch(e){return[];}};
+const set=a=>localStorage.setItem("police_memorials",JSON.stringify(a));
+const find=id=>get().find(x=>String(x.id)===String(id));
+const match=(it,n)=>[it.name,it.endTitle,it.currentRank,it.org,(it.achievements||[]).join(' ')].join(' ').toLowerCase().includes(n.toLowerCase());
 
-  // 캔버스로 카드 재그려 PNG 저장(버튼 미포함)
-  function drawCanvas(it){
-    const W=840,H=520,p=28,c=document.createElement('canvas'); c.width=W; c.height=H;
-    const g=c.getContext('2d');
-    const grad=g.createLinearGradient(0,0,W,H); grad.addColorStop(0,color(it.endTitle||"")); grad.addColorStop(1,"#000");
-    g.fillStyle=grad; g.fillRect(0,0,W,H);
-    g.fillStyle='rgba(255,255,255,.94)'; g.fillRect(p,p,W-2*p,H-2*p);
-    g.fillStyle='#111'; g.font='bold 28px system-ui,-apple-system,Segoe UI,Roboto,Arial';
-    g.fillText('명예·추모 카드', p+14, p+40); g.font='16px system-ui,-apple-system,Segoe UI,Roboto,Arial';
-    const lines=[`엔딩: ${it.endTitle||''}`,`이름: ${it.name||''}`,`임용: ${fmtD(it.startDate)}  ${it.org||''}  시작계급: ${it.entryRank||''}`,`현재 계급: ${it.currentRank||''}`,`근무기간: ${fmtYM(it.months||0)}`,`마지막 보유 골드: ${it.finalGold||0}`,...(it.achievements&&it.achievements.length?[`업적: ${it.achievements.join(' · ')}`]:[])];
-    let y=p+80; lines.forEach(t=>{g.fillText(t,p+14,y); y+=28;});
-    g.font='bold 18px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillText('승진/강등 이력', p+14, y+12); y+=32;
-    g.font='14px system-ui,-apple-system,Segoe UI,Roboto,Arial'; (it.changeLog||[]).slice(0,8).forEach(s=>{g.fillText(`• ${s}`,p+14,y); y+=22;});
-    return c;
+// 텍스트 줄바꿈 유틸
+function wrapText(g, text, x, y, maxW, lineH){
+  const words=text.split(' ');
+  let line='';
+  for(let n=0;n<words.length;n++){
+    const test=line+words[n]+' ';
+    if(g.measureText(test).width>maxW && n>0){ g.fillText(line,x,y); line=words[n]+' '; y+=lineH;}
+    else line=test;
   }
-  function savePNG(it){
-    const c=drawCanvas(it);
-    c.toBlob(b=>{ const url=URL.createObjectURL(b); const a=document.createElement('a'); a.download="memorial.png"; a.href=url; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove(); c.remove();},0); },"image/png");
+  g.fillText(line,x,y);
+  return y;
+}
+
+// 카드 그리기(미관 개선)
+function drawCanvas(it){
+  const W=900,H=560,p=28,c=document.createElement('canvas'); c.width=W; c.height=H;
+  const g=c.getContext('2d');
+
+  // 배경 그라데이션
+  const grad=g.createLinearGradient(0,0,W,H); grad.addColorStop(0,color(it.endTitle||"")); grad.addColorStop(1,"#000");
+  g.fillStyle=grad; g.fillRect(0,0,W,H);
+
+  // 라운드 카드
+  g.fillStyle='rgba(255,255,255,.96)';
+  g.strokeStyle='rgba(0,0,0,.08)'; g.lineWidth=2;
+  g.beginPath(); const r=22;
+  g.moveTo(p+r,p); g.arcTo(W-p,p,W-p,p+r,r); g.arcTo(W-p,H-p,W-p-r,H-p,r);
+  g.arcTo(p,H-p,p,H-p-r,r); g.arcTo(p,p,p+r,p,r); g.closePath(); g.fill(); g.stroke();
+
+  // 헤더 리본
+  g.fillStyle=color(it.endTitle||""); g.fillRect(p+14,p+14,W-2*(p+14),52);
+  g.fillStyle='#fff'; g.font='bold 22px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+  g.fillText('명예·추모 카드', p+26, p+49);
+
+  // 본문
+  g.fillStyle='#111'; g.font='18px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+  const head = `${emo(it.gender)} ${it.name||''}`;
+  g.font='bold 26px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+  g.fillText(head, p+26, p+100);
+  g.font='14px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+  g.fillStyle='#333';
+
+  const blockX=p+26, blockW=W-(blockX+p);
+  let y=p+130;
+  const lines=[
+    `엔딩: ${it.endTitle||''}`,
+    `임용: ${fmtD(it.startDate)}  ·  조직: ${it.org||''}  ·  시작계급: ${it.entryRank||''}`,
+    `현재 계급: ${it.currentRank||''}`,
+    `근무기간: ${fmtYM(it.months||0)}`,
+    `마지막 보유 골드: ${it.finalGold||0}`,
+  ];
+  g.font='16px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+  lines.forEach(t=>{ y=wrapText(g,t,blockX,y,blockW,24)+8; });
+
+  // 업적
+  if(it.achievements && it.achievements.length){
+    g.font='bold 16px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+    g.fillText('업적', blockX, y+4); y+=24;
+    g.font='15px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+    y=wrapText(g, it.achievements.join('  ·  '), blockX, y, blockW, 22)+8;
   }
-  function removeItem(it){
-    const fast=(it.endTitle==="순직"||it.endTitle==="의원면직");
-    if(!fast && !confirm("정말 삭제하시겠습니까?")) return;
-    set(get().filter(x=>x.id!==it.id)); render();
-  }
 
-  function render(){
-    let arr=get();
-    if(f.value) arr=arr.filter(x=>x.endTitle===f.value);
-    if(q.value.trim()) arr=arr.filter(x=>match(x,q.value.trim()));
-    if(s.value==="new") arr.sort((a,b)=>b.id-a.id);
-    else if(s.value==="rank") arr.sort((a,b)=>RANKS.indexOf(b.currentRank)-RANKS.indexOf(a.currentRank));
-    else if(s.value==="name") arr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-    if(!arr.length){ list.innerHTML='<div class="small">조건에 맞는 기록이 없습니다.</div>'; return; }
+  // 구분선
+  g.strokeStyle='rgba(0,0,0,.1)'; g.beginPath(); g.moveTo(blockX, y+6); g.lineTo(W-p-26, y+6); g.stroke(); y+=20;
 
-    list.innerHTML=arr.map(it=>{
-      const border=color(it.endTitle||"");
-      const promos=(it.changeLog||[]).map(s=>`• ${s}`).join("<br>")||"기록 없음";
-      const kills=Object.entries(it.defeated||{}).map(([k,v])=>`${k}: ${v}명`).join("<br>")||"기록 없음";
-      const startLine=`임용 : ${fmtD(it.startDate)} ${it.org||''} ${it.entryRank||''}`;
-      const period=`근무기간 : ${fmtYM(it.months||0)}`;
-      const current=`현재 계급 : ${it.currentRank||''}`;
-      const ach=(it.achievements||[]); const achHTML=ach.length?`<div class="small" style="margin-top:6px"><b>업적 :</b> ${ach.join(' · ')}</div>`:"";
-      return `
-        <div class="card" style="border-color:${border}; box-shadow:0 0 0 2px ${border}20 inset;">
-          <div class="title"><span class="name">${emo(it.gender)} ${it.name||'이름없음'}</span><span class="tag" style="background:${border}">${it.endTitle||'엔딩'}</span></div>
-          <div>${startLine}</div><div>${current}</div><div>${period}</div><div>마지막 보유 골드 : ${it.finalGold||0}</div>
-          ${achHTML}
-          <hr style="border-color:rgba(255,255,255,.25);margin:10px 0">
-          <div class="small" style="font-weight:800;margin-bottom:4px">승진/강등 이력</div>
-          <div class="small">${promos}</div>
-          <div class="small" style="font-weight:800;margin:8px 0 4px">제압 목록</div>
-          <div class="small">${kills}</div>
-          <div class="btnrow">
-            <button class="mini save" data-id="${it.id}">📥 이미지 저장</button>
-            <button class="mini del"  data-id="${it.id}">🗑 삭제</button>
-          </div>
-        </div>`;
-    }).join("");
-  }
+  // 이력
+  g.font='bold 16px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+  g.fillText('승진/강등 이력', blockX, y); y+=24;
+  g.font='14px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+  (it.changeLog||['기록 없음']).slice(0,8).forEach(s=>{ y=wrapText(g,'• '+s, blockX, y, blockW, 20)+4; });
 
-  // 이벤트 위임: 정적 버튼
-  list.addEventListener('click',e=>{
-    const id = e.target.dataset.id;
-    if(!id) return;
-    const item = find(id); if(!item) return;
-    if(e.target.classList.contains('save')) savePNG(item);
-    if(e.target.classList.contains('del'))  removeItem(item);
-  });
+  return c;
+}
 
-  [f,s,q].forEach(el=>el.addEventListener('input',render));
-  render();
+function savePNG(it){
+  const c=drawCanvas(it);
+  c.toBlob(b=>{
+    const url=URL.createObjectURL(b); const a=document.createElement('a');
+    a.download="memorial.png"; a.href=url; document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url); a.remove(); c.remove();},0);
+  },"image/png");
+}
+function removeItem(it){
+  const fast=(it.endTitle==="순직"||it.endTitle==="의원면직");
+  if(!fast && !confirm("정말 삭제하시겠습니까?")) return;
+  set(get().filter(x=>x.id!==it.id)); render();
+}
+
+function render(){
+  let arr=get();
+  if(f.value) arr=arr.filter(x=>x.endTitle===f.value);
+  if(q.value.trim()) arr=arr.filter(x=>match(x,q.value.trim()));
+  if(s.value==="new") arr.sort((a,b)=>b.id-a.id);
+  else if(s.value==="rank") arr.sort((a,b)=>R.indexOf(b.currentRank)-R.indexOf(a.currentRank));
+  else if(s.value==="name") arr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(!arr.length){ list.innerHTML='<div class="small">조건에 맞는 기록이 없습니다.</div>'; return; }
+
+  list.innerHTML=arr.map(it=>{
+    const border=color(it.endTitle||"");
+    const promos=(it.changeLog||[]).map(s=>`• ${s}`).join("<br>")||"기록 없음";
+    const kills=Object.entries(it.defeated||{}).map(([k,v])=>`${k}: ${v}명`).join("<br>")||"기록 없음";
+    const startLine=`임용 : ${fmtD(it.startDate)} ${it.org||''} ${it.entryRank||''}`;
+    const period=`근무기간 : ${fmtYM(it.months||0)}`;
+    const current=`현재 계급 : ${it.currentRank||''}`;
+    const ach=(it.achievements||[]); const achHTML=ach.length?`<div class="small" style="margin-top:6px"><b>업적 :</b> ${ach.join(' · ')}</div>`:"";
+    return `
+      <div class="card" style="border-color:${border}; box-shadow:0 0 0 2px ${border}20 inset;">
+        <div class="title"><span class="name">${emo(it.gender)} ${it.name||'이름없음'}</span><span class="tag" style="background:${border}">${it.endTitle||'엔딩'}</span></div>
+        <div>${startLine}</div><div>${current}</div><div>${period}</div><div>마지막 보유 골드 : ${it.finalGold||0}</div>
+        ${achHTML}
+        <hr style="border-color:rgba(255,255,255,.25);margin:10px 0">
+        <div class="small" style="font-weight:800;margin-bottom:4px">승진/강등 이력</div>
+        <div class="small">${promos}</div>
+        <div class="small" style="font-weight:800;margin:8px 0 4px">제압 목록</div>
+        <div class="small">${kills}</div>
+        <div class="btnrow">
+          <button class="mini save" data-id="${it.id}">📥 이미지 저장</button>
+          <button class="mini del"  data-id="${it.id}">🗑 삭제</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+list.addEventListener('click',e=>{
+  const id=e.target.dataset.id; if(!id) return;
+  const item=find(id); if(!item) return;
+  if(e.target.classList.contains('save')) savePNG(item);
+  if(e.target.classList.contains('del'))  removeItem(item);
+});
+[f,s,q].forEach(el=>el.addEventListener('input',render));
+render();
 })();
 </script>
 </body>
