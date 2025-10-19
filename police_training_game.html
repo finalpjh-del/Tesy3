@@ -10,11 +10,13 @@
   html,body{height:100%}
   body{
     margin:0; background:linear-gradient(90deg,var(--bg1),var(--bg2)); color:#fff;
-    font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; text-align:center;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; text-align:center;
     -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
   }
   .bar{display:flex;align-items:center;justify-content:space-between;padding:8px 10px}
-  .pill{background:#0b1020;color:#fff;border-radius:999px;padding:8px 12px;font-weight:700;text-decoration:none}
+  .pill{background:#0b1020;color:#fff;border-radius:999px;padding:8px 12px;font-weight:700;text-decoration:none; box-shadow:0 0 0 2px #1e88e520}
+  .pill.police{box-shadow:0 0 0 2px #4fc3f7, 0 0 18px #4fc3f766}
+  .pill.coast{box-shadow:0 0 0 2px #1565c0, 0 0 18px #0d47a166}
   .ok{background:linear-gradient(90deg,#ff9966,#ff5e62);color:#fff;font-weight:800;border:0;border-radius:14px;padding:12px 16px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25)}
   .ok:disabled{opacity:.5;cursor:not-allowed}
   .hud{margin:4px 0 6px}
@@ -55,7 +57,7 @@
 </style>
 </head>
 <body>
-  <h1 style="margin:10px 0 6px">🎲 경찰 양성 🎲 <span class="small" style="opacity:.8">v0.19</span></h1>
+  <h1 style="margin:10px 0 6px">🎲 경찰 양성 🎲 <span class="small" style="opacity:.8">v0.20</span></h1>
 
   <!-- 신원 선택 -->
   <div id="start" class="overlay" style="display:flex">
@@ -97,7 +99,7 @@
 
   <!-- 상단 바 -->
   <div class="bar">
-    <a class="pill" href="index.html?v=0.19">⬅️ 메인</a>
+    <a class="pill" id="backMain" href="index.html?v=0.20">⬅️ 메인</a>
     <span id="orgBadge" class="pill">🚓 경찰</span>
     <button id="btnResign" class="pill" title="30년 이상 근무 상태에서 누르면 정년퇴직">📝 의원면직</button>
   </div>
@@ -122,7 +124,7 @@
     <button id="btnRoll" class="ok">🎲 굴리기</button>
     <button id="btnBaton" class="ok">🦯 삼단봉 (1💰)</button>
     <button id="btnFire" class="ok">🔫 격발 (무기 없음)</button>
-    <button id="btnSwitchWeapon" class="pill" title="보유 무기 순환">🔄 무기/탄종 전환</button>
+    <button id="btnSwitchWeapon" class="pill" title="보유 무기 순환">🔄 무기변환</button>
   </div>
   <div style="margin:6px 0" class="small" id="msg">⚔️ 제압 중...</div>
   <div class="flex" style="display:flex;align-items:center;justify-content:center;gap:16px">
@@ -138,7 +140,7 @@
   <div id="after" style="display:none; margin-top:12px">
     <div style="margin-bottom:8px;font-weight:800">✅ 제압 완료!</div>
     <div class="afterrow">
-      <button id="btnRest" class="ok">🛀 씻고 출근 (❤️+5 & 다음 제압)</button>
+      <button id="btnRest" class="ok">🛀 씻고 출근</button>
       <button id="btnBuyBag" class="ok">💉 구급함 (5💰)</button>
       <button id="btnUseBagAfter" class="ok">💉 사용 (❤️+30)</button>
       <button id="btnPromote" class="ok" title="연차 도달 시 활성화">🎖️ 승진도전 (<span id="cost">10</span>💰)</button>
@@ -197,7 +199,7 @@
       <div class="sec"><span class="chip">제압 목록</span><span class="line"></span></div>
       <ul id="kill"></ul>
       <div class="cta">
-        <a id="gotoGallery" href="honor_memorial.html?v=0.19" class="pill" style="text-decoration:none">명예•추모관 열기</a>
+        <a id="gotoGallery" href="honor_memorial.html?v=0.20" class="pill" style="text-decoration:none">명예•추모관 열기</a>
         <button id="backToStart" class="pill">신원 선택으로</button>
       </div>
     </div>
@@ -225,7 +227,7 @@ const MAX_LEVEL = 99;
 const el = {
   start:$("start"), btnStart:$("btnStart"), nm:$("nm"),
   grpOrg:$("grpOrg"), grpGender:$("grpGender"), grpRank:$("grpRank"),
-  orgBadge:$("orgBadge"), emoji:$("emoji"), rank:$("rank"), name:$("name"),
+  orgBadge:$("orgBadge"), backMain:$("backMain"), emoji:$("emoji"), rank:$("rank"), name:$("name"),
   hp:$("hp"), maxhp:$("maxhp"), gold:$("gold"), bags:$("bags"),
   enemyName:$("enemyName"), enemyHP:$("enemyHP"), btnRoll:$("btnRoll"), btnFire:$("btnFire"),
   btnBaton:$("btnBaton"), btnSwitchWeapon:$("btnSwitchWeapon"),
@@ -234,7 +236,7 @@ const el = {
   after:$("after"), btnRest:$("btnRest"), btnBuyBag:$("btnBuyBag"), btnUseBagAfter:$("btnUseBagAfter"),
   btnPromote:$("btnPromote"), cost:$("cost"), afterInfo:$("afterInfo"),
   pop:$("pop"), popTitle:$("popTitle"), popList:$("popList"), popOk:$("popOk"),
-  promo:$("promo"), promoTitle:$("promoTitle"), promoDesc:$("promoDesc"),
+  promo:$("promo"), promoTitle:$("promoTitle"),
   promoD1:$("promoD1"), promoD2:$("promoD2"), promoGo:$("promoGo"), promoCancel:$("promoCancel"),
   ending:$("ending"), endTitle:$("endTitle"), endList:$("endList"), hist:$("hist"), kill:$("kill"), ach:$("ach"),
   achBlock:$("achBlock"), endPlayerName:$("endPlayerName"),
@@ -311,8 +313,13 @@ setupRadioGroup(el.grpOrg,'button',b=>state.org=b.dataset.org);
 setupRadioGroup(el.grpGender,'button',b=>state.gender=b.dataset.g);
 setupRadioGroup(el.grpRank,'button',b=>state.startRankIdx=parseInt(b.dataset.rank||'1'));
 
+function paintOrgBadge(){
+  el.orgBadge.classList.remove('police','coast');
+  el.orgBadge.classList.add(state.org==='coast'?'coast':'police');
+  el.orgBadge.textContent = state.org==='coast'?'🚤 해양경찰':'🚓 경찰';
+}
 function updateHUD(){
-  el.orgBadge.textContent=(state.org==='coast'?'🚤 해양경찰':'🚓 경찰');
+  paintOrgBadge();
   el.emoji.textContent=emojiByGender();
   el.rank.textContent=RANKS[state.rankIdx];
   el.name.textContent=state.name;
@@ -340,12 +347,12 @@ const openPopup=(title,lines)=>{
   el.popTitle.textContent=title;
   el.popList.innerHTML=(Array.isArray(lines)?lines:[lines]).map(x=>`<li>${x}</li>`).join("");
   el.pop.style.display="flex";
-  setTimeout(()=>{ popCanClose=true; }, 500);
+  setTimeout(()=>{ popCanClose=true; }, 1000); // 1초 후 닫기 가능
 };
 const closePopup=()=>{ if(!popCanClose) return; el.pop.style.display="none"; };
 el.popOk.onclick=closePopup; el.pop.onclick=e=>{ if(e.target===el.pop) closePopup(); };
 
-// ---------- 승진 규칙 (요건 상향 유지) ----------
+// ---------- 승진 규칙 (상향 유지) ----------
 function tryPromoteRollRequirement(idx){
   if(idx===0) return 6;                     // 의경→순경 6+
   if(idx>=1 && idx<=3) return 7;            // 순경~경사 → 7+
@@ -513,7 +520,7 @@ el.btnRoll.onclick=()=>{
   },300);
 };
 
-// 삼단봉: 골드1 소모, 내 주사위×2 피해 (적도 동시에 주사위)
+// 삼단봉
 el.btnBaton.onclick=()=>{
   if(!canAct()) return;
   if(state.gold < 1){ el.msg.textContent="💰 골드가 부족합니다!"; return; }
@@ -542,7 +549,7 @@ el.btnBaton.onclick=()=>{
   },300);
 };
 
-// 격발(원거리 무기)
+// 격발
 function enemyCounterThenResume(){
   const e=rint(1,6); el.pDice.textContent="⛔"; el.eDice.textContent=DICE[e-1];
   setTimeout(()=>{ 
@@ -564,7 +571,6 @@ el.btnFire.onclick=()=>{
   el.btnRoll.disabled=true; el.btnFire.disabled=true; el.btnUseBag.disabled=true; el.btnBaton.disabled=true;
 
   if(st.type==='taser'){
-    // 20% 즉사
     const success = Math.random() < st.hit;
     el.msg.textContent = success ? "⚡ 테이저 적중! 즉시 제압" : "⚡ 테이저 실패!";
     setTimeout(()=>{
@@ -579,7 +585,6 @@ el.btnFire.onclick=()=>{
     return;
   }
 
-  // 일반 탄종: 명중률/피해
   const ok=Math.random()<st.hit;
   if(ok){
     const raw=rint(st.min,st.max);
@@ -599,11 +604,7 @@ el.btnFire.onclick=()=>{
 
 // 전투 중 구급함
 el.btnUseBag.onclick=()=>{
-  // 애프터 중/제압 완료 이후 사용 불가
-  if(!state.ended && el.after.style.display!=="none"){
-    return;
-  }
-  if(state.enemyHP<=0 || state.ended) return;
+  if(!canAct()) return; // 애프터나 엔딩, 제압 완료 후 사용 불가
   if(state.hp>=state.maxHP){ el.msg.textContent="❤️ 체력이 가득 찼습니다."; return; }
   if(state.bags>0){
     state.bags-=1; state.kitUses += 1;
@@ -666,10 +667,9 @@ function updatePromotionAvailability(){
     state.lastPromoAnnivNotifiedAt = mir;
   }
 }
-function openPromo(title,desc, onRoll){
-  el.promoTitle.textContent = title; el.promoDesc.textContent = desc;
-  el.promoD1.textContent="🎲"; el.promoD2.textContent="🎲";
-  el.promo.style.display="flex";
+function openPromo(onRoll){
+  $("promoD1").textContent="🎲"; $("promoD2").textContent="🎲";
+  $("promo").style.display="flex";
   const lock=(yes)=>{ el.promoGo.disabled=yes; el.promoCancel.disabled=yes; el.promoGo.style.visibility=yes?'hidden':'visible'; el.promoCancel.style.visibility=yes?'hidden':'visible'; };
   const doRoll=()=>{
     const a=rint(1,6), b=rint(1,6);
@@ -678,12 +678,11 @@ function openPromo(title,desc, onRoll){
       el.promoD1.classList.remove("promoShake"); el.promoD2.classList.remove("promoShake");
       el.promoD1.textContent=DICE[a-1]; el.promoD2.textContent=DICE[b-1];
       onRoll(a,b);
-      setTimeout(()=>{ el.promo.style.display="none"; lock(false); }, 2000);
+      setTimeout(()=>{ $("promo").style.display="none"; lock(false); }, 2000);
     },500);
   };
-  const onGo=()=>{ lock(true); doRoll(); };
-  const onCancel=()=>{ if(el.promoGo.disabled) return; el.promo.style.display="none"; };
-  el.promoGo.onclick=onGo; el.promoCancel.onclick=onCancel;
+  el.promoGo.onclick=()=>{ lock(true); doRoll(); };
+  el.promoCancel.onclick=()=>{ if(el.promoGo.disabled) return; $("promo").style.display="none"; };
 }
 el.btnPromote.onclick=()=>{
   if(state.ended) return;
@@ -704,7 +703,7 @@ el.btnPromote.onclick=()=>{
 
   if(state.gold < state.cost){ openPopup("💰 골드 부족", [`승진도전 비용 ${state.cost}💰이 필요합니다.`]); setTimeout(()=>{ el.pop.style.display="none"; }, 500); return; }
   const req = tryPromoteRollRequirement(state.rankIdx);
-  openPromo("🎖️ 승진도전", `필요 ${req}점`, (a,b)=>{
+  openPromo((a,b)=>{
     const sum=a+b;
     if(state.gold < state.cost){ openPopup("💰 골드 부족", [`승진도전 비용 ${state.cost}💰이 필요합니다.`]); setTimeout(()=>{ el.pop.style.display="none"; }, 500); return; }
     state.gold -= state.cost; updateHUD();
@@ -762,12 +761,8 @@ function buildAchievements(endTitle){
   if(state.demotionCount>=2) ach.push("🚨 과잉진압 경찰관");
   if(state.batonUses>=20) ach.push("🦯 삼단봉 애호가");
   if(state.kitUses>=20) ach.push("💉 약물 중독자");
-  // 20년 이내 명예퇴직 시
   if(endTitle==="명예퇴직" && years<=20) ach.push("⚡ 초단기 승진자");
-  // 치안총감 이후 특별 업적
-  if(endTitle==="명예퇴직" && state.specialPostCareer){
-    ach.push(`👔 ${state.specialPostCareer}`);
-  }
+  if(endTitle==="명예퇴직" && state.specialPostCareer){ ach.push(`👔 ${state.specialPostCareer}`); }
   return ach;
 }
 function addEndLines(base){
@@ -783,7 +778,7 @@ function saveMemorial(endTitle, achievements){
     const entry={ id:Date.now(), endTitle, name:state.name, org:orgName(),
       entryRank:state.entryRank, currentRank:RANKS[state.rankIdx], startDate:state.startDate,
       months:state.monthsAccum, level:state.level, defeated:state.defeated, changeLog:state.changeLog, finalGold:state.gold||0,
-      achievements };
+      achievements, gender: state.gender };
     const arr=JSON.parse(localStorage.getItem("police_memorials")||"[]"); arr.push(entry);
     localStorage.setItem("police_memorials", JSON.stringify(arr));
   }catch(e){}
@@ -798,7 +793,6 @@ function openEnding(title){
   el.endTitle.textContent=title + " — " + state.name;
   el.endList.innerHTML=lines.map(s=>`<li>${s}</li>`).join("");
 
-  // 업적 섹션 표시/숨김
   if(achievements.length){
     el.achBlock.style.display="flex";
     el.ach.style.display="block";
@@ -831,10 +825,8 @@ function applyStartRank(){
   state.maxHP = (state.rankIdx===4)?80:50;
   state.hp = state.maxHP; state.gold=0; state.bags=0;
   state.cost = costForRank(state.rankIdx);
-  // 시작 시 무기 없음
   state.ownedWeapons = new Set();
   state.ammo = '';
-  // 업적 카운터 초기화
   state.batonUses = 0; state.kitUses = 0; state.demotionCount = 0;
   state.specialPostCareer = null;
   updateHUD();
@@ -867,30 +859,29 @@ el.btnUseBagAfter.onclick=()=>{ if(state.hp>=state.maxHP){ el.msg.textContent="�
 // 무기 구매 (중복 방지)
 function buyWeapon(code, price){
   if(state.ownedWeapons.has(code)) return;
-  if(state.gold < price){ showToast("💰 골드가 부족합니다!",1500); return; }
+  if(state.gold < price){ showToast("💰 골드가 부족합니다!",2000); return; }
   state.gold -= price;
   state.ownedWeapons.add(code);
   if(!state.ammo) state.ammo = code; // 첫 구입 자동 장착
   updateHUD();
-  showToast(`🛒 ${weaponName(code)} 구매 완료`);
+  showToast(`🛒 ${weaponName(code)} 구매 완료`,2000);
 }
 el.buy22.onclick = ()=> buyWeapon('22lr',10);
 el.buy9.onclick  = ()=> buyWeapon('9mm',20);
 el.buyShot.onclick = ()=> buyWeapon('shotgun',35);
 el.buyTaser.onclick= ()=> buyWeapon('taser',50);
 
-// 무기/탄종 전환(보유 무기 순환)
+// 무기변환(보유 무기 순환)
 el.btnSwitchWeapon.onclick=()=>{
-  if(state.ownedWeapons.size===0){ showToast("🔒 구매한 무기가 없습니다.",1500); return; }
   const owned = weaponOrder.filter(w=>state.ownedWeapons.has(w));
-  if(owned.length===0){ showToast("🔒 구매한 무기가 없습니다.",1500); return; }
+  if(owned.length===0){ showToast("🔒 구매한 무기가 없습니다.",2000); return; }
   if(!state.ammo || !state.ownedWeapons.has(state.ammo)) state.ammo = owned[0];
   else{
     const idx = owned.indexOf(state.ammo);
     state.ammo = owned[(idx+1)%owned.length];
   }
   updateHUD();
-  showToast(`🔄 장착: ${weaponName(state.ammo)}`,1200);
+  showToast(`🔄 장착: ${weaponName(state.ammo)}`,2000);
 };
 
 // 시작
@@ -904,6 +895,7 @@ el.btnStart.onclick=()=>{
   applyStartRank();
   el.start.style.display="none";
   spawnEnemy(); updateHUD();
+  paintOrgBadge();
 };
 
 backToStart();
