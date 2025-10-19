@@ -8,7 +8,7 @@
   :root{--bg1:#ff9966;--bg2:#ff5e62}
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff;font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif}
+  body{margin:0;background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
   .wrap{max-width:1100px;margin:0 auto;padding:24px 14px}
   a.btn{display:inline-block;background:#0b1020;color:#fff;padding:10px 14px;border-radius:12px;text-decoration:none;font-weight:700}
   .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
@@ -19,15 +19,15 @@
   .name{font-weight:900}
   .small{font-size:12px;opacity:.9}
   .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#0005;margin-left:auto;font-size:12px}
-  .rowbtn{display:flex;gap:8px;margin-top:10px}
-  .rowbtn button{padding:6px 10px;border-radius:10px;border:0;cursor:pointer}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .mini{padding:6px 10px;border-radius:10px;border:0;cursor:pointer}
 </style>
 </head>
 <body>
   <div class="wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
       <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
-      <a class="btn" href="index.html?v=0.20">⬅️ 메인</a>
+      <a class="btn" href="index.html?v=0.21">⬅️ 메인</a>
     </div>
 
     <div id="motto" class="small" style="margin:8px 0 12px;font-weight:700">
@@ -64,6 +64,7 @@
   const sortBy=$("#sortBy");
   const q=$("#q");
   const RANKS=["의경","순경","경장","경사","경위","경감","경정","총경","경무관","치안감","치안정감","치안총감"];
+  const rankOrder=name=>Math.max(0,RANKS.indexOf(name||""));
   const fmt=(d)=> new Date(d).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
   const fmtYM=(months)=>{ const y=Math.floor((months||0)/12), m=(months||0)%12; return m===0? `${String(y).padStart(2,'0')}년` : `${String(y).padStart(2,'0')}년 ${String(m).padStart(2,'0')}개월`; };
 
@@ -79,9 +80,13 @@
       default: return "#263238";
     }
   }
-  function policeEmojiByGender(g){ return g==='F' ? '👮‍♀️' : '👮‍♂️'; }
+  function officerEmojiByGender(g){
+    if(g==="F") return "👮‍♀️";
+    if(g==="M") return "👮‍♂️";
+    return "👮";
+  }
 
-  // --- 카드 이미지 저장용 캔버스 ---
+  // ---- 카드 이미지 저장용 캔버스 렌더(버튼 제외) ----
   function drawCardToCanvas(it){
     const W=840, H=520, pad=28;
     const c=document.createElement('canvas'); c.width=W; c.height=H;
@@ -94,24 +99,23 @@
 
     g.fillStyle='rgba(255,255,255,0.92)'; g.fillRect(pad,pad,W-2*pad,H-2*pad);
     g.fillStyle='#111';
-    g.font='bold 28px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    g.font='bold 28px system-ui,-apple-system,Segoe UI,Roboto,Arial';
     g.fillText('명예·추모 카드', pad+14, pad+40);
-    g.font='16px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    g.font='16px system-ui,-apple-system,Segoe UI,Roboto,Arial';
     const lines = [
       `엔딩: ${it.endTitle||''}`,
-      `이름: ${it.name||''}`,
-      `임용: ${fmt(it.startDate)}`,
-      `조직: ${it.org||''} / 시작 계급: ${it.entryRank||''}`,
+      `이름: ${it.name||''} (${officerEmojiByGender(it.gender||"")})`,
+      `임용: ${fmt(it.startDate)}  ${it.org||''}  시작계급: ${it.entryRank||''}`,
       `현재 계급: ${it.currentRank||''}`,
       `근무기간: ${fmtYM(it.months||0)}`,
       `마지막 보유 골드: ${it.finalGold||0}`,
-      (it.achievements&&it.achievements.length)?`업적: ${(it.achievements||[]).join(' · ')}`:''
-    ].filter(Boolean);
+      ...(it.achievements&&it.achievements.length?[`업적: ${it.achievements.join(' · ')}`]:[])
+    ];
     let y=pad+80;
     lines.forEach(t=>{ g.fillText(t, pad+14, y); y+=28; });
-    g.font='bold 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    g.font='bold 18px system-ui,-apple-system,Segoe UI,Roboto,Arial';
     g.fillText('승진/강등 이력', pad+14, y+12); y+=32;
-    g.font='14px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+    g.font='14px system-ui,-apple-system,Segoe UI,Roboto,Arial';
     const promos=(it.changeLog||[]);
     promos.slice(0,8).forEach(s=>{ g.fillText(`• ${s}`, pad+14, y); y+=22; });
     return c;
@@ -120,18 +124,21 @@
     const c=drawCardToCanvas(it);
     const a=document.createElement('a');
     a.download=`memorial_${it.id||Date.now()}.png`;
-    a.href=c.toDataURL('image/png');
+    a.href=c.toDataURL('image/png'); // PNG 저장
     document.body.appendChild(a); a.click(); a.remove(); c.remove();
   }
-  function deleteCard(entry){
-    const instant = (entry.endTitle==="순직" || entry.endTitle.startsWith("의원면직"));
-    if(!instant){
-      if(!confirm(`정말 삭제할까요?\n엔딩: ${entry.endTitle}\n이름: ${entry.name}`)) return;
+  function deleteCardWithRule(it){
+    // 순직/의원면직은 즉시 삭제, 그 외는 확인 후
+    const fast = (it.endTitle==="순직" || it.endTitle==="의원면직");
+    if(!fast){
+      if(!confirm("정말 삭제하시겠습니까?")) return;
     }
-    const a=JSON.parse(localStorage.getItem("police_memorials")||"[]");
-    const b=a.filter(x=>x.id!==entry.id);
-    localStorage.setItem("police_memorials", JSON.stringify(b));
-    render();
+    try{
+      const a=JSON.parse(localStorage.getItem("police_memorials")||"[]");
+      const b=a.filter(x=>x.id!==it.id);
+      localStorage.setItem("police_memorials", JSON.stringify(b));
+      location.reload();
+    }catch(e){}
   }
 
   function getData(){ try{ return JSON.parse(localStorage.getItem("police_memorials")||"[]"); }catch(e){ return []; } }
@@ -156,38 +163,30 @@
       const startLine = `임용 : ${fmt(it.startDate)} ${it.org||''} ${it.entryRank||''}`;
       const period = `근무기간 : ${fmtYM(it.months||0)}`;
       const current = `현재 계급 : ${it.currentRank||''}`;
-      const achs = (it.achievements||[]);
-      const achHTML = achs.length ? `<div class="small" style="margin-top:6px"><b>업적 :</b> ${achs.join(' · ')}</div>` : "";
+      const ach = (it.achievements||[]);
+      const achHTML = ach.length ? `<div class="small" style="margin-top:6px"><b>업적 :</b> ${ach.join(' · ')}</div>` : "";
       const border = colorByEnding(endTitle);
-      const payload = JSON.stringify({
-        id: it.id, endTitle, name: it.name, startDate: it.startDate, org: it.org,
-        entryRank: it.entryRank, currentRank: it.currentRank, months: it.months,
-        finalGold: it.finalGold||0, changeLog: it.changeLog||[], achievements: it.achievements||[]
-      });
-      const policeIcon = policeEmojiByGender(it.gender);
+      const emo = officerEmojiByGender(it.gender||"");
+      const payload = encodeURIComponent(JSON.stringify(it));
       return `
         <div class="card" style="border-color:${border}; box-shadow:0 0 0 2px ${border}20 inset;">
-          <div class="title"><span class="name">${policeIcon} ${it.name||'이름없음'}</span><span class="tag" style="background:${border}">${endTitle}</span></div>
+          <div class="title"><span class="name">${emo} ${it.name||'이름없음'}</span><span class="tag" style="background:${border}">${endTitle}</span></div>
           <div>${startLine}</div>
           <div>${current}</div>
-          <div>마지막 보유 골드 : ${it.finalGold||0}</div>
           <div>${period}</div>
+          <div>마지막 보유 골드 : ${it.finalGold||0}</div>
           ${achHTML}
           <hr style="border-color:rgba(255,255,255,.25);margin:10px 0">
           <div class="small" style="font-weight:800;margin-bottom:4px">승진/강등 이력</div>
           <div class="small">${promos}</div>
           <div class="small" style="font-weight:800;margin:8px 0 4px">제압 목록</div>
           <div class="small">${kills}</div>
-          <div class="rowbtn">
-            <button onclick='(${downloadCard.toString()})(${payload})'>이미지 저장</button>
-            <button style="background:#300;color:#fff" onclick='(${deleteCard.toString()})(${JSON.stringify({id:0})}.constructor(${JSON.stringify(JSON.stringify({}))}))'>삭제</button>
+          <div class="btnrow">
+            <button class="mini" onclick='(function(){ const it=JSON.parse(decodeURIComponent("${payload}")); (${downloadCard.toString()})(it); })()'>📥 이미지 저장</button>
+            <button class="mini" style="background:#300;color:#fff" onclick='(function(){ const it=JSON.parse(decodeURIComponent("${payload}")); (${deleteCardWithRule.toString()})(it); })()'>🗑 삭제</button>
           </div>
         </div>
-      `.replace(
-        // 위 꼼수 버튼의 인자 교체(보안상 inline JSON 문자열 escape를 피하려는 처리) — 실제 entry를 그대로 넣도록 치환
-        "(${JSON.stringify({id:0})}.constructor("+JSON.stringify(JSON.stringify({}))+")",
-        JSON.stringify(it)
-      );
+      `;
     }).join("");
   }
 
