@@ -27,7 +27,7 @@
   <div class="wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
       <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
-      <a class="btn" href="index.html?v=0.21">⬅️ 메인</a>
+      <a class="btn" href="index.html?v=0.22" rel="noopener">⬅️ 메인</a>
     </div>
 
     <div id="motto" class="small" style="margin:8px 0 12px;font-weight:700">
@@ -85,17 +85,14 @@
     return "👮";
   }
 
-  // ---- 카드 이미지 저장용 캔버스 (버튼은 그림에 포함되지 않음) ----
   function drawCardToCanvas(it){
     const W=840, H=520, pad=28;
     const c=document.createElement('canvas'); c.width=W; c.height=H;
     const g=c.getContext('2d');
-
     const color = colorByEnding(it.endTitle||"");
     const grad=g.createLinearGradient(0,0,W,H);
     grad.addColorStop(0,color); grad.addColorStop(1,"#000");
     g.fillStyle=grad; g.fillRect(0,0,W,H);
-
     g.fillStyle='rgba(255,255,255,0.94)'; g.fillRect(pad,pad,W-2*pad,H-2*pad);
     g.fillStyle='#111';
     g.font='bold 28px system-ui,-apple-system,Segoe UI,Roboto,Arial';
@@ -119,15 +116,23 @@
     promos.slice(0,8).forEach(s=>{ g.fillText(`• ${s}`, pad+14, y); y+=22; });
     return c;
   }
+
+  function yyyymmdd(ts){
+    const d=new Date(ts); const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
+    return `${y}${m}${da}`;
+  }
+
   function downloadCard(it){
     const c=drawCardToCanvas(it);
     const a=document.createElement('a');
-    a.download=`memorial_${it.id||Date.now()}.png`; // PNG 저장
+    const nm=(it.name||'이름없음').replace(/\s+/g,'');
+    const ed=(it.endTitle||'엔딩').replace(/\s+/g,'');
+    a.download=`memorial_${yyyymmdd(it.startDate||Date.now())}_${nm}_${ed}.png`;
     a.href=c.toDataURL('image/png');
     document.body.appendChild(a); a.click(); a.remove(); c.remove();
   }
+
   function deleteCardWithRule(it){
-    // 순직/의원면직은 즉시 삭제, 그 외는 확인 후
     const fast = (it.endTitle==="순직" || it.endTitle==="의원면직");
     if(!fast){
       if(!confirm("정말 삭제하시겠습니까?")) return;
@@ -140,17 +145,19 @@
     }catch(e){}
   }
 
-  function getData(){ try{ return JSON.parse(localStorage.getItem("police_memorials")||"[]"); }catch(e){ return []; } }
+  function getData(){ try{ const raw=localStorage.getItem("police_memorials"); return raw?JSON.parse(raw):[]; }catch(e){ return []; } }
   function matchesQuery(it, needle){
     const t=[it.name,it.endTitle,it.currentRank,it.org,(it.achievements||[]).join(' ')].join(' ').toLowerCase();
-    return t.includes(needle.toLowerCase());
+    return t.includes((needle||'').toLowerCase());
   }
+
   function render(){
     let arr=getData();
+    if(!Array.isArray(arr)) arr=[];
     if(fEnding.value) arr=arr.filter(x=>x.endTitle===fEnding.value);
-    if(q.value.trim()) arr=arr.filter(x=>matchesQuery(x,q.value.trim()));
-    if(sortBy.value==="new"){ arr.sort((a,b)=>b.id-a.id); }
-    else if(sortBy.value==="rank"){ arr.sort((a,b)=>RANKS.indexOf(b.currentRank)-RANKS.indexOf(a.currentRank)); }
+    if(q.value && q.value.trim()) arr=arr.filter(x=>matchesQuery(x,q.value.trim()));
+    if(sortBy.value==="new"){ arr.sort((a,b)=> (b.id||0)-(a.id||0)); }
+    else if(sortBy.value==="rank"){ arr.sort((a,b)=> RANKS.indexOf(b.currentRank)-RANKS.indexOf(a.currentRank)); }
     else if(sortBy.value==="name"){ arr.sort((a,b)=> (a.name||'').localeCompare(b.name||'')); }
 
     if(!arr.length){ list.innerHTML='<div class="small">조건에 맞는 기록이 없습니다.</div>'; return; }
@@ -190,6 +197,7 @@
   }
 
   [fEnding,sortBy,q].forEach(el=>el.addEventListener('input',render));
+  document.addEventListener('DOMContentLoaded', render);
   render();
 })();
 </script>
