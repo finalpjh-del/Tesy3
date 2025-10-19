@@ -24,7 +24,7 @@ a.btn{display:inline-block;background:#0b1020;color:#fff;padding:10px 14px;borde
 <div class="wrap">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
     <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
-    <a class="btn" href="index.html?v=0.25">⬅️ 메인</a>
+    <a class="btn" href="index.html?v=0.26">⬅️ 메인</a>
   </div>
 
   <div class="toolbar">
@@ -50,36 +50,63 @@ const set=a=>localStorage.setItem("police_memorials",JSON.stringify(a));
 const find=id=>get().find(x=>String(x.id)===String(id));
 const match=(it,n)=>[it.name,it.endTitle,it.currentRank,it.org,(it.achievements||[]).join(' ')].join(' ').toLowerCase().includes(n.toLowerCase());
 
-// 캔버스 카드(라운드+리본)
-function wrapText(g, text, x, y, maxW, lineH){const words=text.split(' ');let line='';for(let n=0;n<words.length;n++){const test=line+words[n]+' ';if(g.measureText(test).width>maxW&&n>0){g.fillText(line,x,y);line=words[n]+' ';y+=lineH;}else line=test;}g.fillText(line,x,y);return y;}
+// 줄바꿈 + 행간 유틸
+function wrapText(g, text, x, y, maxW, lineH){
+  const words=(text||'').split(' '); let line='';
+  for(let n=0;n<words.length;n++){
+    const test=line+words[n]+' ';
+    if(g.measureText(test).width>maxW && n>0){ g.fillText(line,x,y); line=words[n]+' '; y+=lineH; }
+    else line=test;
+  }
+  g.fillText(line,x,y);
+  return y;
+}
+
+// 미려한 카드 캔버스
 function drawCanvas(it){
-  const W=900,H=560,p=28,c=document.createElement('canvas'); c.width=W; c.height=H;
+  const W=980,H=620,p=30,c=document.createElement('canvas'); c.width=W; c.height=H;
   const g=c.getContext('2d');
+  // 배경
   const grad=g.createLinearGradient(0,0,W,H); grad.addColorStop(0,color(it.endTitle||"")); grad.addColorStop(1,"#000");
   g.fillStyle=grad; g.fillRect(0,0,W,H);
-  g.fillStyle='rgba(255,255,255,.96)'; g.strokeStyle='rgba(0,0,0,.08)'; g.lineWidth=2;
-  g.beginPath(); const r=22;
-  g.moveTo(p+r,p); g.arcTo(W-p,p,W-p,p+r,r); g.arcTo(W-p,H-p,W-p-r,H-p,r); g.arcTo(p,H-p,p,H-p-r,r); g.arcTo(p,p,p+r,p,r); g.closePath(); g.fill(); g.stroke();
-  g.fillStyle=color(it.endTitle||""); g.fillRect(p+14,p+14,W-2*(p+14),52);
-  g.fillStyle='#fff'; g.font='bold 22px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillText('명예·추모 카드', p+26, p+49);
-  g.fillStyle='#111'; g.font='bold 26px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillText(`${emo(it.gender)} ${it.name||''}`, p+26, p+100);
-  g.font='16px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillStyle='#333';
-  const X=p+26, W2=W-(X+p); let y=p+130;
-  [ `엔딩: ${it.endTitle||''}`,
+  // 카드(라운드, 그림자)
+  g.save(); g.shadowColor='rgba(0,0,0,.35)'; g.shadowBlur=24; g.shadowOffsetY=10;
+  g.fillStyle='rgba(255,255,255,.97)'; g.strokeStyle='rgba(0,0,0,.06)'; g.lineWidth=2;
+  const r=22, x=p, y=p, w=W-2*p, h=H-2*p;
+  g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+r,r); g.arcTo(x+w,y+h,x+w-r,y+h,r);
+  g.arcTo(x,y+h,x,y+h-r,r); g.arcTo(x,y,x+r,y,r); g.closePath(); g.fill(); g.stroke(); g.restore();
+  // 헤더 리본
+  g.fillStyle=color(it.endTitle||""); g.fillRect(x+18,y+18,w-36,58);
+  g.fillStyle='#fff'; g.font='bold 24px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillText('명예·추모 카드', x+32, y+56);
+  // 본문
+  const blockX=x+36, blockW=w-72; let cy=y+100;
+  g.fillStyle='#111'; g.font='bold 28px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillText(`${emo(it.gender)} ${it.name||''}`, blockX, cy); cy+=14;
+  g.font='16px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillStyle='#333'; cy+=18;
+  const lh=26; // 행간
+  [
+    `엔딩: ${it.endTitle||''}`,
     `임용: ${fmtD(it.startDate)}  ·  조직: ${it.org||''}  ·  시작계급: ${it.entryRank||''}`,
     `현재 계급: ${it.currentRank||''}`,
     `근무기간: ${fmtYM(it.months||0)}`,
     `마지막 보유 골드: ${it.finalGold||0}`
-  ].forEach(t=>{ y=wrapText(g,t,X,y,W2,24)+8; });
-  if(it.achievements&&it.achievements.length){ g.font='bold 16px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillText('업적',X,y+4); y+=24; g.font='15px system-ui,-apple-system,Segoe UI,Roboto,Arial'; y=wrapText(g,it.achievements.join('  ·  '),X,y,W2,22)+8;}
-  g.strokeStyle='rgba(0,0,0,.1)'; g.beginPath(); g.moveTo(X,y+6); g.lineTo(W-p-26,y+6); g.stroke(); y+=20;
-  g.font='bold 16px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillText('승진/강등 이력',X,y); y+=24;
-  g.font='14px system-ui,-apple-system,Segoe UI,Roboto,Arial'; (it.changeLog||['기록 없음']).slice(0,8).forEach(s=>{ y=wrapText(g,'• '+s,X,y,W2,20)+4; });
+  ].forEach(t=>{ cy=wrapText(g,t,blockX,cy,blockW,lh)+12; });
+  if(it.achievements && it.achievements.length){
+    g.font='bold 16px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillText('업적', blockX, cy); cy+=lh;
+    g.font='15px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+    cy=wrapText(g, it.achievements.join('  ·  '), blockX, cy, blockW, 24)+14;
+  }
+  g.strokeStyle='rgba(0,0,0,.1)'; g.beginPath(); g.moveTo(blockX, cy); g.lineTo(blockX+blockW, cy); g.stroke(); cy+=16;
+  g.font='bold 16px system-ui,-apple-system,Segoe UI,Roboto,Arial'; g.fillText('승진/강등 이력', blockX, cy); cy+=lh;
+  g.font='14px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+  (it.changeLog||['기록 없음']).slice(0,10).forEach(s=>{ cy=wrapText(g, '• '+s, blockX, cy, blockW, 22)+6; });
   return c;
 }
 function savePNG(it){
   const c=drawCanvas(it);
-  c.toBlob(b=>{ const url=URL.createObjectURL(b); const a=document.createElement('a'); a.download="memorial.png"; a.href=url; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove(); c.remove();},0); },"image/png");
+  c.toBlob(b=>{ const a=document.createElement('a'); const url=URL.createObjectURL(b);
+    a.download='memorial.png'; a.href=url; document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url); a.remove(); c.remove();},0);
+  },"image/png");
 }
 function removeItem(it){
   const fast=(it.endTitle==="순직"||it.endTitle==="의원면직");
