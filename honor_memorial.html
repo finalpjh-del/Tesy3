@@ -27,7 +27,7 @@
   <div class="wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
       <h1 style="margin:6px 0">🏛️ 명예·추모관</h1>
-      <a class="btn" href="index.html?v=0.22" rel="noopener">⬅️ 메인</a>
+      <a class="btn" href="index.html?v=0.21">⬅️ 메인</a>
     </div>
 
     <div id="motto" class="small" style="margin:8px 0 12px;font-weight:700">
@@ -64,7 +64,8 @@
   const sortBy=$("#sortBy");
   const q=$("#q");
   const RANKS=["의경","순경","경장","경사","경위","경감","경정","총경","경무관","치안감","치안정감","치안총감"];
-  const fmt=(d)=> new Date(d).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+
+  const fmtDate=(d)=> new Date(d).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
   const fmtYM=(months)=>{ const y=Math.floor((months||0)/12), m=(months||0)%12; return m===0? `${String(y).padStart(2,'0')}년` : `${String(y).padStart(2,'0')}년 ${String(m).padStart(2,'0')}개월`; };
 
   function colorByEnding(endTitle){
@@ -85,23 +86,38 @@
     return "👮";
   }
 
+  function getData(){
+    try{ return JSON.parse(localStorage.getItem("police_memorials")||"[]"); }
+    catch(e){ return []; }
+  }
+  function matchesQuery(it, needle){
+    const t=[it.name,it.endTitle,it.currentRank,it.org,(it.achievements||[]).join(' ')].join(' ').toLowerCase();
+    return t.includes(needle.toLowerCase());
+  }
+
+  // ---- 카드 이미지를 캔버스로 생성 (버튼 미포함) ----
   function drawCardToCanvas(it){
     const W=840, H=520, pad=28;
     const c=document.createElement('canvas'); c.width=W; c.height=H;
     const g=c.getContext('2d');
+
+    // 배경
     const color = colorByEnding(it.endTitle||"");
     const grad=g.createLinearGradient(0,0,W,H);
     grad.addColorStop(0,color); grad.addColorStop(1,"#000");
     g.fillStyle=grad; g.fillRect(0,0,W,H);
     g.fillStyle='rgba(255,255,255,0.94)'; g.fillRect(pad,pad,W-2*pad,H-2*pad);
+
+    // 텍스트
     g.fillStyle='#111';
     g.font='bold 28px system-ui,-apple-system,Segoe UI,Roboto,Arial';
     g.fillText('명예·추모 카드', pad+14, pad+40);
     g.font='16px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+
     const lines = [
       `엔딩: ${it.endTitle||''}`,
       `이름: ${it.name||''}`,
-      `임용: ${fmt(it.startDate)}  ${it.org||''}  시작계급: ${it.entryRank||''}`,
+      `임용: ${fmtDate(it.startDate)}  ${it.org||''}  시작계급: ${it.entryRank||''}`,
       `현재 계급: ${it.currentRank||''}`,
       `근무기간: ${fmtYM(it.months||0)}`,
       `마지막 보유 골드: ${it.finalGold||0}`,
@@ -109,27 +125,29 @@
     ];
     let y=pad+80;
     lines.forEach(t=>{ g.fillText(t, pad+14, y); y+=28; });
+
     g.font='bold 18px system-ui,-apple-system,Segoe UI,Roboto,Arial';
     g.fillText('승진/강등 이력', pad+14, y+12); y+=32;
     g.font='14px system-ui,-apple-system,Segoe UI,Roboto,Arial';
     const promos=(it.changeLog||[]);
     promos.slice(0,8).forEach(s=>{ g.fillText(`• ${s}`, pad+14, y); y+=22; });
-    return c;
-  }
 
-  function yyyymmdd(ts){
-    const d=new Date(ts); const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0');
-    return `${y}${m}${da}`;
+    return c;
   }
 
   function downloadCard(it){
     const c=drawCardToCanvas(it);
-    const a=document.createElement('a');
-    const nm=(it.name||'이름없음').replace(/\s+/g,'');
-    const ed=(it.endTitle||'엔딩').replace(/\s+/g,'');
-    a.download=`memorial_${yyyymmdd(it.startDate||Date.now())}_${nm}_${ed}.png`;
-    a.href=c.toDataURL('image/png');
-    document.body.appendChild(a); a.click(); a.remove(); c.remove();
+    // toBlob을 사용해 대용량에도 안전하게 저장
+    c.toBlob(blob=>{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0,10);
+      const safeName = (it.name||'noname').replace(/[^\w가-힣_-]+/g,'');
+      const safeEnd  = (it.endTitle||'엔딩').replace(/[^\w가-힣_-]+/g,'');
+      a.download=`${dateStr}_${safeName}_${safeEnd}.png`;
+      a.href=url; document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); c.remove(); }, 0);
+    }, "image/png");
   }
 
   function deleteCardWithRule(it){
@@ -141,23 +159,16 @@
       const a=JSON.parse(localStorage.getItem("police_memorials")||"[]");
       const b=a.filter(x=>x.id!==it.id);
       localStorage.setItem("police_memorials", JSON.stringify(b));
-      location.reload();
+      render();
     }catch(e){}
-  }
-
-  function getData(){ try{ const raw=localStorage.getItem("police_memorials"); return raw?JSON.parse(raw):[]; }catch(e){ return []; } }
-  function matchesQuery(it, needle){
-    const t=[it.name,it.endTitle,it.currentRank,it.org,(it.achievements||[]).join(' ')].join(' ').toLowerCase();
-    return t.includes((needle||'').toLowerCase());
   }
 
   function render(){
     let arr=getData();
-    if(!Array.isArray(arr)) arr=[];
     if(fEnding.value) arr=arr.filter(x=>x.endTitle===fEnding.value);
-    if(q.value && q.value.trim()) arr=arr.filter(x=>matchesQuery(x,q.value.trim()));
-    if(sortBy.value==="new"){ arr.sort((a,b)=> (b.id||0)-(a.id||0)); }
-    else if(sortBy.value==="rank"){ arr.sort((a,b)=> RANKS.indexOf(b.currentRank)-RANKS.indexOf(a.currentRank)); }
+    if(q.value.trim()) arr=arr.filter(x=>matchesQuery(x,q.value.trim()));
+    if(sortBy.value==="new"){ arr.sort((a,b)=>b.id-a.id); }
+    else if(sortBy.value==="rank"){ arr.sort((a,b)=>RANKS.indexOf(b.currentRank)-RANKS.indexOf(a.currentRank)); }
     else if(sortBy.value==="name"){ arr.sort((a,b)=> (a.name||'').localeCompare(b.name||'')); }
 
     if(!arr.length){ list.innerHTML='<div class="small">조건에 맞는 기록이 없습니다.</div>'; return; }
@@ -166,7 +177,7 @@
       const endTitle = it.endTitle || '엔딩';
       const promos = (it.changeLog||[]).map(s=>`• ${s}`).join("<br>") || "기록 없음";
       const kills = Object.entries(it.defeated||{}).map(([k,v])=>`${k}: ${v}명`).join("<br>") || "기록 없음";
-      const startLine = `임용 : ${fmt(it.startDate)} ${it.org||''} ${it.entryRank||''}`;
+      const startLine = `임용 : ${fmtDate(it.startDate)} ${it.org||''} ${it.entryRank||''}`;
       const period = `근무기간 : ${fmtYM(it.months||0)}`;
       const current = `현재 계급 : ${it.currentRank||''}`;
       const ach = (it.achievements||[]);
@@ -197,7 +208,6 @@
   }
 
   [fEnding,sortBy,q].forEach(el=>el.addEventListener('input',render));
-  document.addEventListener('DOMContentLoaded', render);
   render();
 })();
 </script>
