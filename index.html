@@ -17,8 +17,6 @@ h1{margin:0 0 6px;font-size:clamp(28px,5vw,40px)}.lede{margin:0 0 10px;color:var
 .cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
 .btn{display:inline-flex;align-items:center;gap:10px;padding:14px 18px;border-radius:14px;font-weight:800;text-decoration:none;border:0;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--acc1),var(--acc2));box-shadow:0 10px 28px rgba(255,120,90,.25)}
 .btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
-.tips-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.tips-body{display:none;margin-top:8px}
 .footer{position:fixed;left:0;right:0;bottom:10px;display:flex;justify-content:center;pointer-events:none}
 .ver{pointer-events:auto;background:rgba(0,0,0,.4);color:#d8defa;font-weight:800;padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(6px)}
 </style>
@@ -30,32 +28,20 @@ h1{margin:0 0 6px;font-size:clamp(28px,5vw,40px)}.lede{margin:0 0 10px;color:var
         <h1>🎲 경찰 양성</h1>
         <p class="lede">사건을 제압하고, 연차에 맞춰 <b>승진 도전</b>에 성공하세요.</p>
         <div class="cta">
-          <a class="btn" href="police_training_game.html?v=0.25">게임 시작</a>
-          <a class="btn" href="honor_memorial.html?v=0.25">명예·추모관</a>
+          <a class="btn" href="police_training_game.html?v=0.26">게임 시작</a>
+          <a class="btn" href="honor_memorial.html?v=0.26">명예·추모관</a>
         </div>
       </div>
       <div class="glass">
-        <div class="tips-head">
-          <h3 style="margin:0">📝 게임 팁</h3>
-          <button id="tips-toggle" class="btn" type="button" style="padding:10px 12px;font-size:14px">열기/닫기</button>
-        </div>
-        <div id="tips-body" class="tips-body">
-          <ul style="margin:6px 0 0 18px">
-            <li>전투 중 구급함 사용 시 <b>턴 소요 + 적만 주사위</b>.</li>
-            <li><b>제압 완료 후(애프터 패널)</b>에만 <b>+4개월 누적</b>.</li>
-            <li>승진 도전은 <b>연차(만 1·2·3년…)</b>에만. 경감/경정은 <b>2년차부터</b>.</li>
-            <li>의경 경력은 순경 경력과 <b>별도 계산</b>.</li>
-          </ul>
-        </div>
+        <h3 style="margin:0 0 6px">📝 간단 팁</h3>
+        <ul style="margin:6px 0 0 18px">
+          <li><b>애프터 패널</b>이 뜰 때마다 <b>+4개월 누적</b>.</li>
+          <li>승진은 <b>연차 도달</b> 시에만 도전 가능(경감·경정은 2년차부터).</li>
+          <li>전투 중 구급함 사용 시 <b>턴 소요 + 적만 주사위</b>.</li>
+        </ul>
       </div>
     </div>
   </div>
-  <div class="footer"><div class="ver">v0.25</div></div>
-<script>
-document.getElementById('tips-toggle').addEventListener('click',()=>{
-  const b=document.getElementById('tips-body');
-  b.style.display=(b.style.display==='none'||!b.style.display)?'block':'none';
-});
-</script>
+  <div class="footer"><div class="ver">v0.26</div></div>
 </body>
 </html>
